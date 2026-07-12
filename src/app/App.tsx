@@ -1,6 +1,7 @@
 import { HashRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { AppLayout } from '../components/layout/AppBackground';
 import { MainNavigation } from '../components/layout/MainNavigation';
+import { TopBar } from '../components/layout/TopBar';
 import { LibraryPage } from './pages/LibraryPage';
 import { ReviewPage } from './pages/ReviewPage';
 
@@ -10,12 +11,15 @@ export function App() {
       <AppLayout>
         <div className="flex min-h-screen">
           <MainNavigation />
-          <div className="flex min-w-0 flex-1 flex-col gap-5 p-6">
-            <Routes>
-              <Route path="/" element={<Navigate to="/review" replace />} />
-              <Route path="/review" element={<ReviewPage />} />
-              <Route path="/library" element={<LibraryPage />} />
-            </Routes>
+          <div className="flex min-w-0 flex-1 flex-col">
+            <TopBar />
+            <div className="flex min-w-0 flex-1 flex-col gap-5 p-6">
+              <Routes>
+                <Route path="/" element={<Navigate to="/review" replace />} />
+                <Route path="/review" element={<ReviewPage />} />
+                <Route path="/library" element={<LibraryPage />} />
+              </Routes>
+            </div>
           </div>
         </div>
       </AppLayout>
