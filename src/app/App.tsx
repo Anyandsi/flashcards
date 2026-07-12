@@ -1,5 +1,5 @@
 import { HashRouter, Navigate, Route, Routes } from 'react-router-dom';
-import { AppLayout } from '../components/layout/AppBackground';
+import { AppLayout } from '../components/layout/AppLayout';
 import { MainNavigation } from '../components/layout/MainNavigation';
 import { TopBar } from '../components/layout/TopBar';
 import { LibraryPage } from './pages/LibraryPage';
