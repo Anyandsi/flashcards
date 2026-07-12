@@ -9,6 +9,17 @@ function formatElapsedTime(totalSeconds: number) {
   return [hours, minutes, seconds].map((value) => String(value).padStart(2, '0')).join(':');
 }
 
+function isInteractiveTarget(target: EventTarget | null) {
+  if (!(target instanceof HTMLElement)) {
+    return false;
+  }
+
+  return (
+    target.isContentEditable ||
+    ['A', 'BUTTON', 'INPUT', 'SELECT', 'TEXTAREA'].includes(target.tagName)
+  );
+}
+
 export function TopBar() {
   const [isActive, setIsActive] = useState(false);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
@@ -30,6 +41,23 @@ export function TopBar() {
       window.clearInterval(intervalId);
     };
   }, [isActive]);
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.code !== 'Space' || event.repeat || isInteractiveTarget(event.target)) {
+        return;
+      }
+
+      event.preventDefault();
+      setIsActive((currentValue) => !currentValue);
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
 
   return (
     <header className="flex h-16 shrink-0 items-center justify-end border-b border-border bg-background px-6">
