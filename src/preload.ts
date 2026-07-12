@@ -8,5 +8,8 @@ contextBridge.exposeInMainWorld('api', {
     list: () => ipcRenderer.invoke('subjects:list') as Promise<Subject[]>,
     create: (input: CreateSubjectInput) =>
       ipcRenderer.invoke('subjects:create', input) as Promise<Subject>,
+    getCurrent: () => ipcRenderer.invoke('subjects:get-current') as Promise<string | null>,
+    setCurrent: (subjectId: string) =>
+      ipcRenderer.invoke('subjects:set-current', subjectId) as Promise<string>,
   },
 });

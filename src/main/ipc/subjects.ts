@@ -1,6 +1,11 @@
 import { ipcMain } from 'electron';
 import type { CreateSubjectInput } from '../../models/subjects';
-import { createSubject, listSubjects } from '../subjects/subjectsRepository';
+import {
+  createSubject,
+  getCurrentSubjectId,
+  listSubjects,
+  setCurrentSubjectId,
+} from '../subjects/subjectsRepository';
 
 function parseCreateSubjectInput(value: unknown): CreateSubjectInput {
   if (
@@ -22,4 +27,12 @@ export function registerSubjectHandlers() {
   ipcMain.handle('subjects:create', (_event, input: unknown) =>
     createSubject(parseCreateSubjectInput(input)),
   );
+  ipcMain.handle('subjects:get-current', () => getCurrentSubjectId());
+  ipcMain.handle('subjects:set-current', (_event, subjectId: unknown) => {
+    if (typeof subjectId !== 'string') {
+      throw new Error('Subject id is required');
+    }
+
+    return setCurrentSubjectId(subjectId);
+  });
 }

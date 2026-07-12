@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Timer } from 'lucide-react';
+import { SubjectSwitcher } from './SubjectSwitcher';
 
 function formatElapsedTime(totalSeconds: number) {
   const hours = Math.floor(totalSeconds / 3600);
@@ -60,7 +61,9 @@ export function TopBar() {
   }, []);
 
   return (
-    <header className="flex h-16 shrink-0 items-center justify-end border-b border-border bg-background px-6">
+    <header className="flex h-16 shrink-0 items-center justify-between border-b border-border bg-background px-6">
+      <SubjectSwitcher />
+
       <div className="flex items-center gap-4">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Timer size={17} aria-hidden="true" />
