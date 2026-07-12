@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, ChevronDown, Trash2 } from 'lucide-react';
 import type { SessionHistoryItem, Subject } from '../../models/subjects';
 
 const sessionsPerPage = 6;
@@ -180,7 +180,7 @@ export function OverviewPage() {
           }}
           type="button"
         >
-          <Plus size={16} aria-hidden="true" />
+          {isManualFormOpen ? <ChevronDown size={16} aria-hidden="true" /> : <Plus size={16} aria-hidden="true" />}
         </button>
       </div>
 
