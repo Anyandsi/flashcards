@@ -19,7 +19,7 @@ const navigationItems = [
 export function MainNavigation() {
   return (
     <aside className="flex min-h-screen w-72 shrink-0 flex-col border-r border-border bg-card text-card-foreground">
-      <div className="border-b border-border px-5 py-5">
+      <div className="flex h-16 flex-col justify-center border-b border-border px-5">
         <p className="text-lg font-semibold">Flashcards</p>
         <p className="mt-1 text-sm text-muted-foreground">Study workspace</p>
       </div>
