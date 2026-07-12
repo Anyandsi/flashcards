@@ -1,6 +1,10 @@
 import { app, BrowserWindow } from 'electron';
 import path from 'node:path';
 import started from 'electron-squirrel-startup';
+import { closeDatabase } from './main/db/database';
+import { registerSubjectHandlers } from './main/ipc/subjects';
+
+registerSubjectHandlers();
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (started) {
@@ -42,6 +46,10 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit();
   }
+});
+
+app.on('before-quit', () => {
+  closeDatabase();
 });
 
 app.on('activate', () => {
