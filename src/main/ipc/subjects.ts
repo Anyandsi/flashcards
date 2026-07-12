@@ -2,8 +2,11 @@ import { ipcMain } from 'electron';
 import type { CreateSubjectInput } from '../../models/subjects';
 import {
   createSubject,
+  deleteSession,
   getCurrentSubjectId,
+  listSessions,
   listSubjects,
+  recordSubjectSession,
   setCurrentSubjectId,
 } from '../subjects/subjectsRepository';
 
@@ -24,6 +27,7 @@ function parseCreateSubjectInput(value: unknown): CreateSubjectInput {
 
 export function registerSubjectHandlers() {
   ipcMain.handle('subjects:list', () => listSubjects());
+  ipcMain.handle('subjects:list-sessions', () => listSessions());
   ipcMain.handle('subjects:create', (_event, input: unknown) =>
     createSubject(parseCreateSubjectInput(input)),
   );
@@ -34,5 +38,30 @@ export function registerSubjectHandlers() {
     }
 
     return setCurrentSubjectId(subjectId);
+  });
+  ipcMain.handle(
+    'subjects:record-session',
+    (_event, subjectId: unknown, durationSeconds: unknown, createdAt: unknown) => {
+      if (typeof subjectId !== 'string') {
+        throw new Error('Subject id is required');
+      }
+
+      if (typeof durationSeconds !== 'number') {
+        throw new Error('Session duration is required');
+      }
+
+      if (createdAt !== undefined && typeof createdAt !== 'string') {
+        throw new Error('Session date is invalid');
+      }
+
+      return recordSubjectSession(subjectId, durationSeconds, createdAt);
+    },
+  );
+  ipcMain.handle('subjects:delete-session', (_event, sessionId: unknown) => {
+    if (typeof sessionId !== 'string') {
+      throw new Error('Session id is required');
+    }
+
+    return deleteSession(sessionId);
   });
 }

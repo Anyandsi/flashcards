@@ -3,6 +3,7 @@ import { AppLayout } from '../components/layout/AppLayout';
 import { MainNavigation } from '../components/layout/MainNavigation';
 import { TopBar } from '../components/layout/TopBar';
 import { LibraryPage } from './pages/LibraryPage';
+import { OverviewPage } from './pages/OverviewPage';
 import { ReviewPage } from './pages/ReviewPage';
 
 export function App() {
@@ -18,6 +19,7 @@ export function App() {
                 <Route path="/" element={<Navigate to="/review" replace />} />
                 <Route path="/review" element={<ReviewPage />} />
                 <Route path="/library" element={<LibraryPage />} />
+                <Route path="/overview" element={<OverviewPage />} />
               </Routes>
             </div>
           </div>

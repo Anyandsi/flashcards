@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { Timer } from 'lucide-react';
 import { SubjectSwitcher } from './SubjectSwitcher';
 
+const minimumSessionSeconds = 10 * 60;
+
 function formatElapsedTime(totalSeconds: number) {
   const hours = Math.floor(totalSeconds / 3600);
   const minutes = Math.floor((totalSeconds % 3600) / 60);
@@ -24,11 +26,10 @@ function isInteractiveTarget(target: EventTarget | null) {
 export function TopBar() {
   const [isActive, setIsActive] = useState(false);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [activeSubjectId, setActiveSubjectId] = useState<string | null>(null);
   const elapsedTime = formatElapsedTime(elapsedSeconds);
 
   useEffect(() => {
-    // manages timer lifecycle: measure and display timestamp while active, reset 0 once done
-    // TODO: manage storing spent time in a database
     if (!isActive) {
       setElapsedSeconds(0);
       return undefined;
@@ -43,6 +44,25 @@ export function TopBar() {
     };
   }, [isActive]);
 
+  async function handleToggleGrinding() {
+    if (!isActive) {
+      setActiveSubjectId(await window.api.subjects.getCurrent());
+      setElapsedSeconds(0);
+      setIsActive(true);
+      return;
+    }
+
+    const secondsToSave = elapsedSeconds;
+    const subjectId = activeSubjectId;
+
+    setIsActive(false);
+    setActiveSubjectId(null);
+
+    if (subjectId && secondsToSave >= minimumSessionSeconds) {
+      await window.api.subjects.recordSession(subjectId, secondsToSave);
+    }
+  }
+
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.code !== 'Space' || event.repeat || isInteractiveTarget(event.target)) {
@@ -50,7 +70,7 @@ export function TopBar() {
       }
 
       event.preventDefault();
-      setIsActive((currentValue) => !currentValue);
+      handleToggleGrinding();
     };
 
     window.addEventListener('keydown', handleKeyDown);
@@ -58,7 +78,7 @@ export function TopBar() {
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, []);
+  }, [activeSubjectId, elapsedSeconds, isActive]);
 
   return (
     <header className="flex h-16 shrink-0 items-center justify-between border-b border-border bg-background px-6">
@@ -72,9 +92,7 @@ export function TopBar() {
 
         <button
           className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition hover:opacity-90"
-          onClick={() => {
-            setIsActive((v) => !v);
-          }}
+          onClick={handleToggleGrinding}
           type="button"
         >
           {isActive ? 'Stop grinding' : 'Start grinding'}
