@@ -25,6 +25,31 @@ function migrate(db: Database.Database) {
       key TEXT PRIMARY KEY,
       value TEXT
     );
+
+    CREATE TABLE IF NOT EXISTS cards (
+      id TEXT PRIMARY KEY,
+      title TEXT NOT NULL,
+      contents_json TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS decks (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      subject_id TEXT NOT NULL,
+      FOREIGN KEY (subject_id) REFERENCES subjects(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS deck_cards (
+      deck_id TEXT NOT NULL,
+      card_id TEXT NOT NULL,
+      position INTEGER NOT NULL,
+      PRIMARY KEY (deck_id, card_id),
+      FOREIGN KEY (deck_id) REFERENCES decks(id) ON DELETE CASCADE,
+      FOREIGN KEY (card_id) REFERENCES cards(id) ON DELETE CASCADE
+    );
+
+    CREATE INDEX IF NOT EXISTS deck_cards_deck_id_position_index
+      ON deck_cards(deck_id, position);
   `);
 
   const subjectColumns = db.prepare('PRAGMA table_info(subjects)').all() as Array<{ name: string }>;

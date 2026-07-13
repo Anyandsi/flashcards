@@ -2,8 +2,10 @@ import { app, BrowserWindow } from 'electron';
 import path from 'node:path';
 import started from 'electron-squirrel-startup';
 import { closeDatabase } from './main/db/database';
-import { registerSubjectHandlers } from './main/ipc/subjects';
+import { registerDeckHandlers } from './main/decks/decksIpc';
+import { registerSubjectHandlers } from './main/subjects/subjectsIpc';
 
+registerDeckHandlers();
 registerSubjectHandlers();
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.

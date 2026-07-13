@@ -33,7 +33,7 @@ function addDays(date: Date, days: number) {
   return nextDate;
 }
 
-function getGraphDates(year: number) {
+function getGraphDates(year: number): Array<Date | null> {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
@@ -46,7 +46,7 @@ function getGraphDates(year: number) {
   }
 
   const leadingEmptyDays = firstDayOfYear.getDay();
-  const dates: Array<Date | null> = Array.from({ length: leadingEmptyDays }, () => null);
+  const dates: Array<Date | null> = Array(leadingEmptyDays).fill(null);
 
   for (let date = firstDayOfYear; date <= lastVisibleDay; date = addDays(date, 1)) {
     dates.push(date);

@@ -8,7 +8,7 @@ import {
   listSubjects,
   recordSubjectSession,
   setCurrentSubjectId,
-} from '../subjects/subjectsRepository';
+} from './subjectsRepository';
 
 function parseCreateSubjectInput(value: unknown): CreateSubjectInput {
   if (
@@ -54,7 +54,7 @@ export function registerSubjectHandlers() {
         throw new Error('Session date is invalid');
       }
 
-      return recordSubjectSession(subjectId, durationSeconds, createdAt);
+      return recordSubjectSession(subjectId, durationSeconds, createdAt as string | undefined);
     },
   );
   ipcMain.handle('subjects:delete-session', (_event, sessionId: unknown) => {

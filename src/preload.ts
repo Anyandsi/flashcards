@@ -1,9 +1,26 @@
 // See the Electron documentation for details on how to use preload scripts:
 // https://www.electronjs.org/docs/latest/tutorial/process-model#preload-scripts
 import { contextBridge, ipcRenderer } from 'electron';
+import type { Card, CreateCardInput, CreateDeckInput, Deck, UpdateCardInput, UpdateDeckInput } from './models/decks';
 import type { CreateSubjectInput, Session, SessionHistoryItem, Subject } from './models/subjects';
 
 contextBridge.exposeInMainWorld('api', {
+  cards: {
+    list: () => ipcRenderer.invoke('cards:list') as Promise<Card[]>,
+    get: (cardId: string) => ipcRenderer.invoke('cards:get', cardId) as Promise<Card>,
+    create: (input: CreateCardInput) => ipcRenderer.invoke('cards:create', input) as Promise<Card>,
+    update: (cardId: string, input: UpdateCardInput) =>
+      ipcRenderer.invoke('cards:update', cardId, input) as Promise<Card>,
+    delete: (cardId: string) => ipcRenderer.invoke('cards:delete', cardId) as Promise<string>,
+  },
+  decks: {
+    list: () => ipcRenderer.invoke('decks:list') as Promise<Deck[]>,
+    get: (deckId: string) => ipcRenderer.invoke('decks:get', deckId) as Promise<Deck>,
+    create: (input: CreateDeckInput) => ipcRenderer.invoke('decks:create', input) as Promise<Deck>,
+    update: (deckId: string, input: UpdateDeckInput) =>
+      ipcRenderer.invoke('decks:update', deckId, input) as Promise<Deck>,
+    delete: (deckId: string) => ipcRenderer.invoke('decks:delete', deckId) as Promise<string>,
+  },
   subjects: {
     list: () => ipcRenderer.invoke('subjects:list') as Promise<Subject[]>,
     listSessions: () =>
