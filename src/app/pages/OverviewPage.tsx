@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Plus, ChevronDown, Trash2 } from 'lucide-react';
 import type { SessionHistoryItem, Subject } from '../../models/subjects';
+import { TileGraph } from '../../components/visualization/TileGraph';
 
 const sessionsPerPage = 6;
+const currentYear = new Date().getFullYear();
 
 function getCurrentDateInputValue() {
   const date = new Date();
@@ -49,6 +51,27 @@ function formatSessionDate(value: string) {
   }).format(new Date(value));
 }
 
+function getSessionDateKey(value: string) {
+  const date = new Date(value);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+
+  return `${year}-${month}-${day}`;
+}
+
+function getSessionYear(value: string) {
+  return new Date(value).getFullYear();
+}
+
+function formatActivityHours(totalHours: number | undefined) {
+  if (!totalHours) {
+    return '0m';
+  }
+
+  return formatDuration(Math.round(totalHours * 3600));
+}
+
 export function OverviewPage() {
   const [sessions, setSessions] = useState<SessionHistoryItem[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
@@ -57,6 +80,7 @@ export function OverviewPage() {
   const [manualDate, setManualDate] = useState(getCurrentDateInputValue);
   const [manualTime, setManualTime] = useState(getCurrentTimeInputValue);
   const [manualDurationMinutes, setManualDurationMinutes] = useState('10');
+  const [selectedActivityYear, setSelectedActivityYear] = useState(currentYear);
   const [isCreatingSession, setIsCreatingSession] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -66,6 +90,47 @@ export function OverviewPage() {
 
     return sessions.slice(startIndex, startIndex + sessionsPerPage);
   }, [currentPage, sessions]);
+  const sessionsByYear = useMemo(
+    () =>
+      sessions.reduce<Record<number, SessionHistoryItem[]>>((yearMap, session) => {
+        const year = getSessionYear(session.createdAt);
+
+        yearMap[year] = [...(yearMap[year] ?? []), session];
+
+        return yearMap;
+      }, {}),
+    [sessions],
+  );
+  const activityYearOptions = useMemo(
+    () =>
+      Array.from(new Set([currentYear, ...Object.keys(sessionsByYear).map(Number)])).sort(
+        (firstYear, secondYear) => secondYear - firstYear,
+      ),
+    [sessionsByYear],
+  );
+  const selectedYearSessions = sessionsByYear[selectedActivityYear] ?? [];
+  const sessionsByDay = useMemo(
+    () =>
+      selectedYearSessions.reduce<Record<string, SessionHistoryItem[]>>((dayMap, session) => {
+        const day = getSessionDateKey(session.createdAt);
+
+        dayMap[day] = [...(dayMap[day] ?? []), session];
+
+        return dayMap;
+      }, {}),
+    [selectedYearSessions],
+  );
+  const activityHoursByDate = useMemo(
+    () =>
+      Object.entries(sessionsByDay).reduce<Record<string, number>>((activityMap, [day, daySessions]) => {
+        activityMap[day] =
+          daySessions.reduce((totalSeconds, session) => totalSeconds + session.durationSeconds, 0) /
+          3600;
+
+        return activityMap;
+      }, {}),
+    [sessionsByDay],
+  );
 
   useEffect(() => {
     let isMounted = true;
@@ -248,6 +313,30 @@ export function OverviewPage() {
         </div>
       ) : null}
 
+      <TileGraph
+        headerControl={
+          <label className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+            Year
+            <select
+              className="h-9 rounded-md border border-border bg-background px-3 text-sm text-foreground outline-none focus:border-primary"
+              onChange={(event) => {
+                setSelectedActivityYear(Number(event.target.value));
+              }}
+              value={selectedActivityYear}
+            >
+              {activityYearOptions.map((year) => (
+                <option key={year} value={year}>
+                  {year}
+                </option>
+              ))}
+            </select>
+          </label>
+        }
+        formatValue={formatActivityHours}
+        valuesByDate={activityHoursByDate}
+        year={selectedActivityYear}
+      />
+
       {isLoading ? (
         <div className="rounded-md border border-border bg-card p-6 text-sm text-muted-foreground">
           Loading sessions...
@@ -266,7 +355,7 @@ export function OverviewPage() {
             className="rounded-md border border-border bg-card p-5 text-card-foreground"
             key={session.id}
           >
-            <div className="flex items-start justify-between gap-4">
+            <div className="flex items-center justify-between gap-4">
               <div className="min-w-0">
                 <h2 className="truncate text-base font-semibold">{session.subjectName}</h2>
                 <p className="mt-1 text-sm text-muted-foreground">
