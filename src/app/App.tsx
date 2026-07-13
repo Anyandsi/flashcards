@@ -18,6 +18,7 @@ export function App() {
               <Routes>
                 <Route path="/" element={<Navigate to="/review" replace />} />
                 <Route path="/review" element={<ReviewPage />} />
+                <Route path="/decks" element={<Navigate to="/library" replace />} />
                 <Route path="/library" element={<LibraryPage />} />
                 <Route path="/overview" element={<OverviewPage />} />
               </Routes>

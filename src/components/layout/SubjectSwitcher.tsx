@@ -2,6 +2,8 @@ import { ChevronDown, Plus, Search } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Subject } from '../../models/subjects';
 
+const currentSubjectChangeEvent = 'current-subject-change';
+
 function findInitialSubjectId(subjects: Subject[], currentSubjectId: string | null) {
   if (!subjects.length) {
     return null;
@@ -10,6 +12,10 @@ function findInitialSubjectId(subjects: Subject[], currentSubjectId: string | nu
   const currentSubject = subjects.find((subject) => subject.id === currentSubjectId);
 
   return currentSubject?.id ?? subjects[0].id;
+}
+
+function announceCurrentSubjectChange(subjectId: string) {
+  window.dispatchEvent(new CustomEvent(currentSubjectChangeEvent, { detail: subjectId }));
 }
 
 export function SubjectSwitcher() {
@@ -101,6 +107,7 @@ export function SubjectSwitcher() {
     try {
       // set current persistent subject that will also be saved between sessions
       await window.api.subjects.setCurrent(subjectId);
+      announceCurrentSubjectChange(subjectId);
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : 'Failed to select subject');
     }
@@ -121,6 +128,7 @@ export function SubjectSwitcher() {
       setSearchValue('');
       setIsOpen(false);
       await window.api.subjects.setCurrent(subject.id);
+      announceCurrentSubjectChange(subject.id);
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : 'Failed to create subject');
     } finally {

@@ -1,4 +1,4 @@
-import { BookOpen, ChartNoAxesColumnIncreasing, Layers } from 'lucide-react';
+import { BookOpen, ChartNoAxesColumnIncreasing, SquareLibrary } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 
 const navigationItems = [
@@ -10,8 +10,8 @@ const navigationItems = [
   },
   {
     label: 'Library',
-    description: 'Manage decks',
-    icon: Layers,
+    description: 'Manage topics',
+    icon: SquareLibrary,
     to: '/library',
   },
   {
