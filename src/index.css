@@ -59,3 +59,89 @@ body,
 body {
   margin: 0;
 }
+
+.markdown-preview > * + * {
+  margin-top: 0.75rem;
+}
+
+.markdown-preview h1,
+.markdown-preview h2,
+.markdown-preview h3 {
+  color: var(--foreground);
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.markdown-preview h1 {
+  font-size: 1.5rem;
+}
+
+.markdown-preview h2 {
+  font-size: 1.25rem;
+}
+
+.markdown-preview h3 {
+  font-size: 1.125rem;
+}
+
+.markdown-preview a {
+  color: var(--primary);
+  text-decoration: underline;
+}
+
+.markdown-preview img {
+  max-height: 24rem;
+  max-width: 100%;
+  border-radius: 6px;
+  object-fit: contain;
+}
+
+.markdown-preview code {
+  border-radius: 4px;
+  background: var(--secondary);
+  padding: 0.125rem 0.25rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 0.875em;
+}
+
+.markdown-preview pre {
+  overflow-x: auto;
+  border-radius: 6px;
+  background: var(--background);
+  padding: 1rem;
+}
+
+.markdown-preview pre code {
+  background: transparent;
+  padding: 0;
+}
+
+.markdown-preview ul,
+.markdown-preview ol {
+  padding-left: 1.25rem;
+}
+
+.markdown-preview ul {
+  list-style: disc;
+}
+
+.markdown-preview ol {
+  list-style: decimal;
+}
+
+.markdown-preview blockquote {
+  border-left: 3px solid var(--border);
+  color: var(--muted-foreground);
+  padding-left: 1rem;
+}
+
+.markdown-preview table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.markdown-preview th,
+.markdown-preview td {
+  border: 1px solid var(--border);
+  padding: 0.5rem;
+}

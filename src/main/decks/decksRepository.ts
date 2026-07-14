@@ -1,7 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type {
   Card,
-  CardContentBlock,
   CardContents,
   CreateCardInput,
   CreateDeckInput,
@@ -33,54 +32,94 @@ type IdRow = {
 };
 
 const emptyCardContents: CardContents = {
-  blocks: [],
-  type: 'document',
+  markdown: '',
+  type: 'markdown',
 };
-
-function isCardContentBlock(value: unknown): value is CardContentBlock {
-  if (!value || typeof value !== 'object' || !('id' in value) || typeof value.id !== 'string') {
-    return false;
-  }
-
-  if (!('type' in value)) {
-    return false;
-  }
-
-  if (value.type === 'text') {
-    return 'text' in value && typeof value.text === 'string';
-  }
-
-  if (value.type === 'image') {
-    return (
-      'src' in value &&
-      typeof value.src === 'string' &&
-      (!('alt' in value) || value.alt === undefined || typeof value.alt === 'string')
-    );
-  }
-
-  return false;
-}
 
 function isCardContents(value: unknown): value is CardContents {
   return (
     !!value &&
     typeof value === 'object' &&
     'type' in value &&
-    value.type === 'document' &&
-    'blocks' in value &&
-    Array.isArray(value.blocks) &&
-    value.blocks.every(isCardContentBlock)
+    value.type === 'markdown' &&
+    'markdown' in value &&
+    typeof value.markdown === 'string'
   );
+}
+
+function migrateImageCardContents(value: unknown): CardContents | null {
+  if (
+    !value ||
+    typeof value !== 'object' ||
+    !('type' in value) ||
+    value.type !== 'image' ||
+    !('src' in value) ||
+    typeof value.src !== 'string'
+  ) {
+    return null;
+  }
+
+  const alt = 'alt' in value && typeof value.alt === 'string' ? value.alt : 'image';
+
+  return {
+    markdown: `![${alt}](${value.src})`,
+    type: 'markdown',
+  };
+}
+
+function migrateLegacyCardContents(value: unknown): CardContents | null {
+  if (
+    !value ||
+    typeof value !== 'object' ||
+    !('type' in value) ||
+    value.type !== 'document' ||
+    !('blocks' in value) ||
+    !Array.isArray(value.blocks)
+  ) {
+    return null;
+  }
+
+  const markdown = value.blocks
+    .map((block) => {
+      if (block && typeof block === 'object' && 'type' in block && block.type === 'text') {
+        return 'text' in block && typeof block.text === 'string' ? block.text : '';
+      }
+
+      if (block && typeof block === 'object' && 'type' in block && block.type === 'image') {
+        return 'src' in block && typeof block.src === 'string' ? `![image](${block.src})` : '';
+      }
+
+      return '';
+    })
+    .filter(Boolean)
+    .join('\n\n');
+
+  return {
+    markdown,
+    type: 'markdown',
+  };
 }
 
 function parseCardContents(value: string): CardContents {
   const contents = JSON.parse(value) as unknown;
 
-  if (!isCardContents(contents)) {
+  if (isCardContents(contents)) {
+    return contents;
+  }
+
+  const imageContents = migrateImageCardContents(contents);
+
+  if (imageContents) {
+    return imageContents;
+  }
+
+  const legacyContents = migrateLegacyCardContents(contents);
+
+  if (!legacyContents) {
     throw new Error('Stored card contents are invalid');
   }
 
-  return contents;
+  return legacyContents;
 }
 
 function validateCardContents(contents: CardContents) {

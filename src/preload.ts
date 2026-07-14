@@ -1,10 +1,15 @@
 // See the Electron documentation for details on how to use preload scripts:
 // https://www.electronjs.org/docs/latest/tutorial/process-model#preload-scripts
 import { contextBridge, ipcRenderer } from 'electron';
+import type { SaveImageAttachmentInput, SavedImageAttachment } from './models/attachments';
 import type { Card, CreateCardInput, CreateDeckInput, Deck, UpdateCardInput, UpdateDeckInput } from './models/decks';
 import type { CreateSubjectInput, Session, SessionHistoryItem, Subject } from './models/subjects';
 
 contextBridge.exposeInMainWorld('api', {
+  attachments: {
+    saveImage: (input: SaveImageAttachmentInput) =>
+      ipcRenderer.invoke('attachments:save-image', input) as Promise<SavedImageAttachment>,
+  },
   cards: {
     list: () => ipcRenderer.invoke('cards:list') as Promise<Card[]>,
     get: (cardId: string) => ipcRenderer.invoke('cards:get', cardId) as Promise<Card>,

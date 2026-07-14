@@ -1,24 +1,25 @@
 import { BookOpen, ChartNoAxesColumnIncreasing, SquareLibrary } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
+import { routes } from '../../app/routes';
 
 const navigationItems = [
   {
     label: 'Review',
     description: 'Practice due cards',
     icon: BookOpen,
-    to: '/review',
+    to: routes.review,
   },
   {
     label: 'Library',
     description: 'Manage topics',
     icon: SquareLibrary,
-    to: '/library',
+    to: routes.library,
   },
   {
     label: 'Overview',
     description: 'Session history',
     icon: ChartNoAxesColumnIncreasing,
-    to: '/overview',
+    to: routes.overview,
   },
 ];
 

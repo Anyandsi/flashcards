@@ -1,22 +1,9 @@
-export type TextCardContentBlock = {
-  id: string;
-  type: 'text';
-  text: string;
+export type MarkdownCardContents = {
+  markdown: string;
+  type: 'markdown';
 };
 
-export type ImageCardContentBlock = {
-  alt?: string;
-  id: string;
-  src: string;
-  type: 'image';
-};
-
-export type CardContentBlock = TextCardContentBlock | ImageCardContentBlock;
-
-export type CardContents = {
-  blocks: CardContentBlock[];
-  type: 'document';
-};
+export type CardContents = MarkdownCardContents;
 
 export type Card = {
   contents: CardContents;

@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Check, Pencil, Plus, Trash2, X } from 'lucide-react';
-import type { Deck } from '../../models/decks';
-import type { Subject } from '../../models/subjects';
+import { Link } from 'react-router-dom';
+import type { Deck } from '../../../models/decks';
+import type { Subject } from '../../../models/subjects';
+import { routes } from '../../routes';
 
 const currentSubjectChangeEvent = 'current-subject-change';
 
@@ -257,10 +259,15 @@ export function LibraryPage() {
                     />
                   ) : (
                     <>
-                      <h2 className="truncate text-base font-semibold">{deck.name}</h2>
-                      <p className="mt-1 text-sm text-muted-foreground">
-                        {deck.cardIds.length} cards
-                      </p>
+                      <Link
+                        className="block rounded-md outline-none transition hover:text-primary focus:text-primary"
+                        to={routes.topic(deck.id)}
+                      >
+                        <h2 className="truncate text-base font-semibold">{deck.name}</h2>
+                        <p className="mt-1 text-sm text-muted-foreground">
+                          {deck.cardIds.length} cards
+                        </p>
+                      </Link>
                     </>
                   )}
                 </div>

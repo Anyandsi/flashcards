@@ -1,7 +1,11 @@
+import type { SaveImageAttachmentInput, SavedImageAttachment } from './models/attachments';
 import type { Card, CreateCardInput, CreateDeckInput, Deck, UpdateCardInput, UpdateDeckInput } from './models/decks';
 import type { CreateSubjectInput, Session, SessionHistoryItem, Subject } from './models/subjects';
 
 type ElectronApi = {
+  attachments: {
+    saveImage: (input: SaveImageAttachmentInput) => Promise<SavedImageAttachment>;
+  };
   cards: {
     list: () => Promise<Card[]>;
     get: (cardId: string) => Promise<Card>;
