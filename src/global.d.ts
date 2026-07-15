@@ -10,6 +10,7 @@ type ElectronApi = {
     list: () => Promise<Card[]>;
     get: (cardId: string) => Promise<Card>;
     create: (input: CreateCardInput) => Promise<Card>;
+    createInDeck: (deckId: string, input: CreateCardInput) => Promise<Card>;
     update: (cardId: string, input: UpdateCardInput) => Promise<Card>;
     delete: (cardId: string) => Promise<string>;
   };

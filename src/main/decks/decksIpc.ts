@@ -9,6 +9,7 @@ import type {
 import { trustedIpcHandler } from '../security/rendererSecurity';
 import {
   createCard,
+  createCardInDeck,
   createDeck,
   deleteCard,
   deleteDeck,
@@ -131,6 +132,12 @@ export function registerDeckHandlers() {
   ipcMain.handle(
     'cards:create',
     trustedIpcHandler((_event, input: unknown) => createCard(parseCreateCardInput(input))),
+  );
+  ipcMain.handle(
+    'cards:create-in-deck',
+    trustedIpcHandler((_event, deckId: unknown, input: unknown) =>
+      createCardInDeck(parseId(deckId, 'Deck id'), parseCreateCardInput(input)),
+    ),
   );
   ipcMain.handle(
     'cards:update',

@@ -71,14 +71,7 @@ export function CardEditorPage() {
       if (cardId) {
         await window.api.cards.update(cardId, values);
       } else {
-        const [storedTopic, createdCard] = await Promise.all([
-          topic ? Promise.resolve(topic) : window.api.decks.get(topicId),
-          window.api.cards.create(values),
-        ]);
-
-        await window.api.decks.update(topicId, {
-          cardIds: [...storedTopic.cardIds, createdCard.id],
-        });
+        await window.api.cards.createInDeck(topicId, values);
       }
 
       navigate(routes.topic(topicId));

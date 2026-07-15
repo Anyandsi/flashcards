@@ -14,6 +14,8 @@ contextBridge.exposeInMainWorld('api', {
     list: () => ipcRenderer.invoke('cards:list') as Promise<Card[]>,
     get: (cardId: string) => ipcRenderer.invoke('cards:get', cardId) as Promise<Card>,
     create: (input: CreateCardInput) => ipcRenderer.invoke('cards:create', input) as Promise<Card>,
+    createInDeck: (deckId: string, input: CreateCardInput) =>
+      ipcRenderer.invoke('cards:create-in-deck', deckId, input) as Promise<Card>,
     update: (cardId: string, input: UpdateCardInput) =>
       ipcRenderer.invoke('cards:update', cardId, input) as Promise<Card>,
     delete: (cardId: string) => ipcRenderer.invoke('cards:delete', cardId) as Promise<string>,

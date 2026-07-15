@@ -199,6 +199,16 @@ function requireSubject(subjectId: string) {
   }
 }
 
+function requireDeck(database: ReturnType<typeof getDatabase>, deckId: string) {
+  const deck = database
+    .prepare('SELECT id FROM decks WHERE id = ?')
+    .get(deckId) as IdRow | undefined;
+
+  if (!deck) {
+    throw new Error('Deck does not exist');
+  }
+}
+
 function getUniqueCardIds(cardIds: string[]) {
   return Array.from(new Set(cardIds));
 }
@@ -239,6 +249,38 @@ function replaceDeckCardIds(deckId: string, cardIds: string[]) {
   });
 }
 
+function buildCard(input: CreateCardInput): Card {
+  const title = input.title.trim();
+  const contents = input.contents ?? emptyCardContents;
+
+  if (!title) {
+    throw new Error('Card title is required');
+  }
+
+  validateCardContents(contents);
+
+  return {
+    contents,
+    id: randomUUID(),
+    title,
+  };
+}
+
+function insertCard(database: ReturnType<typeof getDatabase>, card: Card) {
+  database
+    .prepare(
+      `
+      INSERT INTO cards (id, title, contents_json)
+      VALUES (@id, @title, @contentsJson)
+      `,
+    )
+    .run({
+      contentsJson: JSON.stringify(card.contents),
+      id: card.id,
+      title: card.title,
+    });
+}
+
 export function listCards(): Card[] {
   const rows = getDatabase()
     .prepare(
@@ -266,33 +308,40 @@ export function getCard(cardId: string): Card {
 }
 
 export function createCard(input: CreateCardInput): Card {
-  const title = input.title.trim();
-  const contents = input.contents ?? emptyCardContents;
+  const card = buildCard(input);
 
-  if (!title) {
-    throw new Error('Card title is required');
-  }
+  insertCard(getDatabase(), card);
 
-  validateCardContents(contents);
+  return card;
+}
 
-  const card: Card = {
-    contents,
-    id: randomUUID(),
-    title,
-  };
+export function createCardInDeck(deckId: string, input: CreateCardInput): Card {
+  const card = buildCard(input);
+  const db = getDatabase();
+  const createStoredCard = db.transaction(() => {
+    requireDeck(db, deckId);
+    insertCard(db, card);
 
-  getDatabase()
-    .prepare(
+    const nextPosition = db
+      .prepare(
+        `
+        SELECT COALESCE(MAX(position), -1) + 1 AS position
+        FROM deck_cards
+        WHERE deck_id = ?
+        `,
+      )
+      .pluck()
+      .get(deckId) as number;
+
+    db.prepare(
       `
-      INSERT INTO cards (id, title, contents_json)
-      VALUES (@id, @title, @contentsJson)
+      INSERT INTO deck_cards (deck_id, card_id, position)
+      VALUES (?, ?, ?)
       `,
-    )
-    .run({
-      contentsJson: JSON.stringify(card.contents),
-      id: card.id,
-      title: card.title,
-    });
+    ).run(deckId, card.id, nextPosition);
+  });
+
+  createStoredCard();
 
   return card;
 }
