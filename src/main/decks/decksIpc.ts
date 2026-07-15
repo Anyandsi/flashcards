@@ -6,6 +6,7 @@ import type {
   UpdateCardInput,
   UpdateDeckInput,
 } from '../../models/decks';
+import { trustedIpcHandler } from '../security/rendererSecurity';
 import {
   createCard,
   createDeck,
@@ -122,27 +123,43 @@ function parseId(value: unknown, label: string): string {
 }
 
 export function registerDeckHandlers() {
-  ipcMain.handle('cards:list', () => listCards());
-  ipcMain.handle('cards:get', (_event, cardId: unknown) => getCard(parseId(cardId, 'Card id')));
-  ipcMain.handle('cards:create', (_event, input: unknown) =>
-    createCard(parseCreateCardInput(input)),
+  ipcMain.handle('cards:list', trustedIpcHandler(() => listCards()));
+  ipcMain.handle(
+    'cards:get',
+    trustedIpcHandler((_event, cardId: unknown) => getCard(parseId(cardId, 'Card id'))),
   );
-  ipcMain.handle('cards:update', (_event, cardId: unknown, input: unknown) =>
-    updateCard(parseId(cardId, 'Card id'), parseUpdateCardInput(input)),
+  ipcMain.handle(
+    'cards:create',
+    trustedIpcHandler((_event, input: unknown) => createCard(parseCreateCardInput(input))),
   );
-  ipcMain.handle('cards:delete', (_event, cardId: unknown) =>
-    deleteCard(parseId(cardId, 'Card id')),
+  ipcMain.handle(
+    'cards:update',
+    trustedIpcHandler((_event, cardId: unknown, input: unknown) =>
+      updateCard(parseId(cardId, 'Card id'), parseUpdateCardInput(input)),
+    ),
+  );
+  ipcMain.handle(
+    'cards:delete',
+    trustedIpcHandler((_event, cardId: unknown) => deleteCard(parseId(cardId, 'Card id'))),
   );
 
-  ipcMain.handle('decks:list', () => listDecks());
-  ipcMain.handle('decks:get', (_event, deckId: unknown) => getDeck(parseId(deckId, 'Deck id')));
-  ipcMain.handle('decks:create', (_event, input: unknown) =>
-    createDeck(parseCreateDeckInput(input)),
+  ipcMain.handle('decks:list', trustedIpcHandler(() => listDecks()));
+  ipcMain.handle(
+    'decks:get',
+    trustedIpcHandler((_event, deckId: unknown) => getDeck(parseId(deckId, 'Deck id'))),
   );
-  ipcMain.handle('decks:update', (_event, deckId: unknown, input: unknown) =>
-    updateDeck(parseId(deckId, 'Deck id'), parseUpdateDeckInput(input)),
+  ipcMain.handle(
+    'decks:create',
+    trustedIpcHandler((_event, input: unknown) => createDeck(parseCreateDeckInput(input))),
   );
-  ipcMain.handle('decks:delete', (_event, deckId: unknown) =>
-    deleteDeck(parseId(deckId, 'Deck id')),
+  ipcMain.handle(
+    'decks:update',
+    trustedIpcHandler((_event, deckId: unknown, input: unknown) =>
+      updateDeck(parseId(deckId, 'Deck id'), parseUpdateDeckInput(input)),
+    ),
+  );
+  ipcMain.handle(
+    'decks:delete',
+    trustedIpcHandler((_event, deckId: unknown) => deleteDeck(parseId(deckId, 'Deck id'))),
   );
 }

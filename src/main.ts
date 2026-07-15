@@ -5,6 +5,7 @@ import { registerAttachmentHandlers } from './main/attachments/attachmentsIpc';
 import { registerAttachmentProtocol } from './main/attachments/attachmentsProtocol';
 import { closeDatabase } from './main/db/database';
 import { registerDeckHandlers } from './main/decks/decksIpc';
+import { configureRendererSecurity } from './main/security/rendererSecurity';
 import { registerSubjectHandlers } from './main/subjects/subjectsIpc';
 
 protocol.registerSchemesAsPrivileged([
@@ -33,9 +34,20 @@ const createWindow = () => {
     width: 800,
     height: 600,
     webPreferences: {
+      allowRunningInsecureContent: false,
+      contextIsolation: true,
+      devTools: !!MAIN_WINDOW_VITE_DEV_SERVER_URL,
+      experimentalFeatures: false,
+      navigateOnDragDrop: false,
+      nodeIntegration: false,
       preload: path.join(__dirname, 'preload.js'),
+      sandbox: true,
+      webSecurity: true,
+      webviewTag: false,
     },
   });
+
+  configureRendererSecurity(mainWindow);
 
   // and load the index.html of the app.
   if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
@@ -46,8 +58,9 @@ const createWindow = () => {
     );
   }
 
-  // Open the DevTools.
-  mainWindow.webContents.openDevTools();
+  if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
+    mainWindow.webContents.openDevTools();
+  }
 };
 
 // This method will be called when Electron has finished

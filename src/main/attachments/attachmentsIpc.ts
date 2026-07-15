@@ -1,5 +1,6 @@
 import { ipcMain } from 'electron';
 import type { SaveImageAttachmentInput } from '../../models/attachments';
+import { trustedIpcHandler } from '../security/rendererSecurity';
 import { saveImageAttachment } from './attachmentsRepository';
 
 function parseImageData(value: unknown): ArrayBuffer {
@@ -40,7 +41,10 @@ function parseSaveImageInput(value: unknown): SaveImageAttachmentInput {
 }
 
 export function registerAttachmentHandlers() {
-  ipcMain.handle('attachments:save-image', (_event, input: unknown) =>
-    saveImageAttachment(parseSaveImageInput(input)),
+  ipcMain.handle(
+    'attachments:save-image',
+    trustedIpcHandler((_event, input: unknown) =>
+      saveImageAttachment(parseSaveImageInput(input)),
+    ),
   );
 }

@@ -15,6 +15,33 @@ const imageExtensionsByMimeType = new Map([
 ]);
 const allowedImageExtensions = new Set(imageExtensionsByMimeType.values());
 
+function hasBytes(data: Uint8Array, offset: number, expected: number[]) {
+  return expected.every((byte, index) => data[offset + index] === byte);
+}
+
+function hasAscii(data: Uint8Array, offset: number, expected: string) {
+  return Array.from(expected).every(
+    (character, index) => data[offset + index] === character.charCodeAt(0),
+  );
+}
+
+function isValidImageData(data: ArrayBuffer, extension: string) {
+  const bytes = new Uint8Array(data);
+
+  switch (extension) {
+    case '.gif':
+      return hasAscii(bytes, 0, 'GIF87a') || hasAscii(bytes, 0, 'GIF89a');
+    case '.jpg':
+      return hasBytes(bytes, 0, [0xff, 0xd8, 0xff]);
+    case '.png':
+      return hasBytes(bytes, 0, [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+    case '.webp':
+      return hasAscii(bytes, 0, 'RIFF') && hasAscii(bytes, 8, 'WEBP');
+    default:
+      return false;
+  }
+}
+
 export function getAttachmentsDirectory() {
   return path.join(app.getPath('userData'), 'attachments');
 }
@@ -57,6 +84,11 @@ export async function saveImageAttachment(
   }
 
   const extension = getImageExtension(input);
+
+  if (!isValidImageData(input.data, extension)) {
+    throw new Error('Image contents do not match the selected file type');
+  }
+
   const filename = `${randomUUID()}${extension}`;
   const filePath = getAttachmentFilePath(filename);
 

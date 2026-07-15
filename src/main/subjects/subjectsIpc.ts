@@ -1,5 +1,6 @@
 import { ipcMain } from 'electron';
 import type { CreateSubjectInput } from '../../models/subjects';
+import { trustedIpcHandler } from '../security/rendererSecurity';
 import {
   createSubject,
   deleteSession,
@@ -26,42 +27,53 @@ function parseCreateSubjectInput(value: unknown): CreateSubjectInput {
 }
 
 export function registerSubjectHandlers() {
-  ipcMain.handle('subjects:list', () => listSubjects());
-  ipcMain.handle('subjects:list-sessions', () => listSessions());
-  ipcMain.handle('subjects:create', (_event, input: unknown) =>
-    createSubject(parseCreateSubjectInput(input)),
-  );
-  ipcMain.handle('subjects:get-current', () => getCurrentSubjectId());
-  ipcMain.handle('subjects:set-current', (_event, subjectId: unknown) => {
-    if (typeof subjectId !== 'string') {
-      throw new Error('Subject id is required');
-    }
-
-    return setCurrentSubjectId(subjectId);
-  });
+  ipcMain.handle('subjects:list', trustedIpcHandler(() => listSubjects()));
+  ipcMain.handle('subjects:list-sessions', trustedIpcHandler(() => listSessions()));
   ipcMain.handle(
-    'subjects:record-session',
-    (_event, subjectId: unknown, durationSeconds: unknown, createdAt: unknown) => {
+    'subjects:create',
+    trustedIpcHandler((_event, input: unknown) =>
+      createSubject(parseCreateSubjectInput(input)),
+    ),
+  );
+  ipcMain.handle('subjects:get-current', trustedIpcHandler(() => getCurrentSubjectId()));
+  ipcMain.handle(
+    'subjects:set-current',
+    trustedIpcHandler((_event, subjectId: unknown) => {
       if (typeof subjectId !== 'string') {
         throw new Error('Subject id is required');
       }
 
-      if (typeof durationSeconds !== 'number') {
-        throw new Error('Session duration is required');
-      }
-
-      if (createdAt !== undefined && typeof createdAt !== 'string') {
-        throw new Error('Session date is invalid');
-      }
-
-      return recordSubjectSession(subjectId, durationSeconds, createdAt as string | undefined);
-    },
+      return setCurrentSubjectId(subjectId);
+    }),
   );
-  ipcMain.handle('subjects:delete-session', (_event, sessionId: unknown) => {
-    if (typeof sessionId !== 'string') {
-      throw new Error('Session id is required');
-    }
+  ipcMain.handle(
+    'subjects:record-session',
+    trustedIpcHandler(
+      (_event, subjectId: unknown, durationSeconds: unknown, createdAt: unknown) => {
+        if (typeof subjectId !== 'string') {
+          throw new Error('Subject id is required');
+        }
 
-    return deleteSession(sessionId);
-  });
+        if (typeof durationSeconds !== 'number') {
+          throw new Error('Session duration is required');
+        }
+
+        if (createdAt !== undefined && typeof createdAt !== 'string') {
+          throw new Error('Session date is invalid');
+        }
+
+        return recordSubjectSession(subjectId, durationSeconds, createdAt as string | undefined);
+      },
+    ),
+  );
+  ipcMain.handle(
+    'subjects:delete-session',
+    trustedIpcHandler((_event, sessionId: unknown) => {
+      if (typeof sessionId !== 'string') {
+        throw new Error('Session id is required');
+      }
+
+      return deleteSession(sessionId);
+    }),
+  );
 }
