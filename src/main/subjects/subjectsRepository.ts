@@ -5,12 +5,31 @@ import type {
   SessionHistoryItem,
   Subject,
 } from '../../models/subjects';
+import type { DeletionReceipt } from '../../models/deletions';
 import { getDatabase } from '../db/database';
+import { createDeletionReceipt } from '../deletions/deletionsRepository';
 
 type SubjectRow = {
+  created_at: string;
   id: string;
   name: string;
   time_spent: number;
+};
+
+type StoredDeckRow = {
+  id: string;
+  name: string;
+  subject_id: string;
+};
+
+type StoredCardRow = {
+  contents_json: string;
+  deck_id: string;
+  id: string;
+  last_review_date: string | null;
+  position: number;
+  review_rating: string | null;
+  title: string;
 };
 
 type SessionRow = {
@@ -129,6 +148,112 @@ export function createSubject(input: CreateSubjectInput): Subject {
   }
 
   return subject;
+}
+
+export function deleteSubject(subjectId: string): DeletionReceipt {
+  const db = getDatabase();
+  const subject = db
+    .prepare('SELECT id, name, time_spent, created_at FROM subjects WHERE id = ?')
+    .get(subjectId) as SubjectRow | undefined;
+
+  if (!subject) {
+    throw new Error('Subject does not exist');
+  }
+
+  const decks = db
+    .prepare('SELECT id, name, subject_id FROM decks WHERE subject_id = ?')
+    .all(subjectId) as StoredDeckRow[];
+  const cards = db
+    .prepare(
+      `
+      SELECT cards.id, cards.title, cards.contents_json, cards.deck_id, cards.position,
+             cards.review_rating, cards.last_review_date
+      FROM cards
+      INNER JOIN decks ON decks.id = cards.deck_id
+      WHERE decks.subject_id = ?
+      ORDER BY cards.deck_id, cards.position
+      `,
+    )
+    .all(subjectId) as StoredCardRow[];
+  const sessions = db
+    .prepare('SELECT id, subject_id, created_at, duration_seconds FROM sessions WHERE subject_id = ?')
+    .all(subjectId) as SessionRow[];
+  const wasCurrent = getCurrentSubjectId() === subjectId;
+  const deleteStoredSubject = db.transaction(() => {
+    db.prepare('DELETE FROM subjects WHERE id = ?').run(subjectId);
+
+    if (wasCurrent) {
+      const replacementId = db
+        .prepare('SELECT id FROM subjects ORDER BY name COLLATE NOCASE ASC LIMIT 1')
+        .pluck()
+        .get() as string | undefined;
+      db.prepare(
+        `
+        INSERT INTO app_settings (key, value)
+        VALUES ('current_subject_id', ?)
+        ON CONFLICT(key) DO UPDATE SET value = excluded.value
+        `,
+      ).run(replacementId ?? null);
+    }
+  });
+
+  deleteStoredSubject();
+
+  return createDeletionReceipt('subject', subject.name, () => {
+    const restoreSubject = db.transaction(() => {
+      db.prepare(
+        `
+        INSERT INTO subjects (id, name, time_spent, created_at)
+        VALUES (@id, @name, @time_spent, @created_at)
+        `,
+      ).run(subject);
+
+      const insertDeck = db.prepare(
+        'INSERT INTO decks (id, name, subject_id) VALUES (@id, @name, @subject_id)',
+      );
+      for (const deck of decks) {
+        insertDeck.run(deck);
+      }
+
+      const insertCard = db.prepare(
+        `
+        INSERT INTO cards
+          (id, title, contents_json, deck_id, position, review_rating, last_review_date)
+        VALUES
+          (@id, @title, @contents_json, @deck_id, @position, @review_rating, @last_review_date)
+        `,
+      );
+      for (const card of cards) {
+        insertCard.run(card);
+      }
+
+      const insertSession = db.prepare(
+        `
+        INSERT INTO sessions (id, subject_id, created_at, duration_seconds)
+        VALUES (@id, @subject_id, @created_at, @duration_seconds)
+        `,
+      );
+      for (const session of sessions) {
+        insertSession.run(session);
+      }
+
+      const currentSubjectId = db
+        .prepare("SELECT value FROM app_settings WHERE key = 'current_subject_id'")
+        .pluck()
+        .get() as string | null | undefined;
+      if (wasCurrent || !currentSubjectId) {
+        db.prepare(
+          `
+          INSERT INTO app_settings (key, value)
+          VALUES ('current_subject_id', ?)
+          ON CONFLICT(key) DO UPDATE SET value = excluded.value
+          `,
+        ).run(subject.id);
+      }
+    });
+
+    restoreSubject();
+  });
 }
 
 export function recordSubjectSession(

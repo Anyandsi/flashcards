@@ -3,6 +3,7 @@
 import { contextBridge, ipcRenderer } from 'electron';
 import type { SaveImageAttachmentInput, SavedImageAttachment } from './models/attachments';
 import type { Card, CreateCardInput, CreateDeckInput, Deck, UpdateCardInput, UpdateDeckInput } from './models/decks';
+import type { DeletionReceipt } from './models/deletions';
 import type { CreateSubjectInput, Session, SessionHistoryItem, Subject } from './models/subjects';
 import type { ReviewRating, SubjectReviewProgress } from './models/review';
 
@@ -21,7 +22,8 @@ contextBridge.exposeInMainWorld('api', {
       ipcRenderer.invoke('cards:update', cardId, input) as Promise<Card>,
     setReviewRating: (cardId: string, rating: ReviewRating) =>
       ipcRenderer.invoke('cards:set-review-rating', cardId, rating) as Promise<Card>,
-    delete: (cardId: string) => ipcRenderer.invoke('cards:delete', cardId) as Promise<string>,
+    delete: (cardId: string) =>
+      ipcRenderer.invoke('cards:delete', cardId) as Promise<DeletionReceipt>,
   },
   decks: {
     list: () => ipcRenderer.invoke('decks:list') as Promise<Deck[]>,
@@ -29,7 +31,12 @@ contextBridge.exposeInMainWorld('api', {
     create: (input: CreateDeckInput) => ipcRenderer.invoke('decks:create', input) as Promise<Deck>,
     update: (deckId: string, input: UpdateDeckInput) =>
       ipcRenderer.invoke('decks:update', deckId, input) as Promise<Deck>,
-    delete: (deckId: string) => ipcRenderer.invoke('decks:delete', deckId) as Promise<string>,
+    delete: (deckId: string) =>
+      ipcRenderer.invoke('decks:delete', deckId) as Promise<DeletionReceipt>,
+  },
+  deletions: {
+    undo: (deletionId: string) =>
+      ipcRenderer.invoke('deletions:undo', deletionId) as Promise<DeletionReceipt>,
   },
   review: {
     getSubjectProgress: (subjectId: string) =>
@@ -41,6 +48,8 @@ contextBridge.exposeInMainWorld('api', {
       ipcRenderer.invoke('subjects:list-sessions') as Promise<SessionHistoryItem[]>,
     create: (input: CreateSubjectInput) =>
       ipcRenderer.invoke('subjects:create', input) as Promise<Subject>,
+    delete: (subjectId: string) =>
+      ipcRenderer.invoke('subjects:delete', subjectId) as Promise<DeletionReceipt>,
     getCurrent: () => ipcRenderer.invoke('subjects:get-current') as Promise<string | null>,
     setCurrent: (subjectId: string) =>
       ipcRenderer.invoke('subjects:set-current', subjectId) as Promise<string>,

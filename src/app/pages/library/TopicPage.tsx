@@ -2,6 +2,7 @@ import { ArrowLeft, LayoutGrid, NotebookText, Pencil, Plus, Trash2 } from 'lucid
 import { Link, useParams } from 'react-router-dom';
 import { useEffect, useMemo, useState } from 'react';
 import type { Card, Deck } from '../../../models/decks';
+import { useDeletionFeedback } from '../../../components/feedback/DeletionFeedback';
 import { MarkdownPreview } from '../../../components/cards/MarkdownPreview';
 import { announceReviewProgressChange } from '../../review/reviewEvents';
 import { routes } from '../../routes';
@@ -9,6 +10,7 @@ import { routes } from '../../routes';
 type TopicViewMode = 'cards' | 'notes';
 
 export function TopicPage() {
+  const { confirmDeletion, showUndo } = useDeletionFeedback();
   const { topicId } = useParams<{ topicId: string }>();
   const [topic, setTopic] = useState<Deck | null>(null);
   const [cards, setCards] = useState<Card[]>([]);
@@ -62,21 +64,51 @@ export function TopicPage() {
     };
   }, [topicId]);
 
-  async function handleDeleteCard(cardId: string) {
+  async function reloadTopic() {
+    if (!topicId) {
+      return;
+    }
+
+    const [storedTopic, storedCards] = await Promise.all([
+      window.api.decks.get(topicId),
+      window.api.cards.listByDeck(topicId),
+    ]);
+    setTopic(storedTopic);
+    setCards(storedCards);
+  }
+
+  async function handleDeleteCard(card: Card) {
     if (!topic) {
+      return;
+    }
+
+    const confirmed = await confirmDeletion({
+      description: 'This card and its review history will be deleted. You can undo this for a short time.',
+      title: `Delete “${card.title}”?`,
+    });
+
+    if (!confirmed) {
       return;
     }
 
     setErrorMessage(null);
 
     try {
-      await window.api.cards.delete(cardId);
-      setCards((currentCards) => currentCards.filter((card) => card.id !== cardId));
+      const receipt = await window.api.cards.delete(card.id);
+      setCards((currentCards) => currentCards.filter((currentCard) => currentCard.id !== card.id));
       setTopic({
         ...topic,
         cardCount: Math.max(topic.cardCount - 1, 0),
       });
       announceReviewProgressChange();
+      showUndo({
+        message: `Deleted card “${card.title}”`,
+        onUndone: async () => {
+          await reloadTopic();
+          announceReviewProgressChange();
+        },
+        receipt,
+      });
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : 'Failed to delete card');
     }
@@ -204,7 +236,7 @@ export function TopicPage() {
                     aria-label={`Delete ${card.title}`}
                     className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition hover:bg-secondary hover:text-destructive"
                     onClick={() => {
-                      handleDeleteCard(card.id);
+                      handleDeleteCard(card);
                     }}
                     type="button"
                   >

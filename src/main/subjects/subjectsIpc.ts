@@ -3,6 +3,7 @@ import type { CreateSubjectInput } from '../../models/subjects';
 import { trustedIpcHandler } from '../security/rendererSecurity';
 import {
   createSubject,
+  deleteSubject,
   deleteSession,
   getCurrentSubjectId,
   listSessions,
@@ -34,6 +35,16 @@ export function registerSubjectHandlers() {
     trustedIpcHandler((_event, input: unknown) =>
       createSubject(parseCreateSubjectInput(input)),
     ),
+  );
+  ipcMain.handle(
+    'subjects:delete',
+    trustedIpcHandler((_event, subjectId: unknown) => {
+      if (typeof subjectId !== 'string') {
+        throw new Error('Subject id is required');
+      }
+
+      return deleteSubject(subjectId);
+    }),
   );
   ipcMain.handle('subjects:get-current', trustedIpcHandler(() => getCurrentSubjectId()));
   ipcMain.handle(

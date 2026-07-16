@@ -1,6 +1,7 @@
-import { ChevronDown, Plus, Search } from 'lucide-react';
+import { ChevronDown, Plus, Search, Trash2 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Subject } from '../../models/subjects';
+import { useDeletionFeedback } from '../feedback/DeletionFeedback';
 
 const currentSubjectChangeEvent = 'current-subject-change';
 
@@ -14,11 +15,12 @@ function findInitialSubjectId(subjects: Subject[], currentSubjectId: string | nu
   return currentSubject?.id ?? subjects[0].id;
 }
 
-function announceCurrentSubjectChange(subjectId: string) {
+function announceCurrentSubjectChange(subjectId: string | null) {
   window.dispatchEvent(new CustomEvent(currentSubjectChangeEvent, { detail: subjectId }));
 }
 
 export function SubjectSwitcher() {
+  const { confirmDeletion, showUndo } = useDeletionFeedback();
   const switcherRef = useRef<HTMLDivElement>(null);
   const [isOpen, setIsOpen] = useState(false);
   const [searchValue, setSearchValue] = useState('');
@@ -26,6 +28,7 @@ export function SubjectSwitcher() {
   const [selectedSubjectId, setSelectedSubjectId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
+  const [deletingSubjectId, setDeletingSubjectId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const selectedSubject = subjects.find((subject) => subject.id === selectedSubjectId) ?? subjects[0] ?? null;
@@ -137,6 +140,52 @@ export function SubjectSwitcher() {
     }
   }
 
+  async function reloadSubjects() {
+    const [storedSubjects, currentSubjectId] = await Promise.all([
+      window.api.subjects.list(),
+      window.api.subjects.getCurrent(),
+    ]);
+    const initialSubjectId = findInitialSubjectId(storedSubjects, currentSubjectId);
+
+    setSubjects(storedSubjects);
+    setSelectedSubjectId(initialSubjectId);
+
+    if (initialSubjectId && initialSubjectId !== currentSubjectId) {
+      await window.api.subjects.setCurrent(initialSubjectId);
+    }
+
+    announceCurrentSubjectChange(initialSubjectId);
+  }
+
+  async function handleDeleteSubject(subject: Subject) {
+    const confirmed = await confirmDeletion({
+      description: 'All topics, cards, review history, and study sessions in this subject will be deleted. You can undo this for a short time.',
+      title: `Delete “${subject.name}”?`,
+    });
+
+    if (!confirmed) {
+      return;
+    }
+
+    setDeletingSubjectId(subject.id);
+    setErrorMessage(null);
+
+    try {
+      const receipt = await window.api.subjects.delete(subject.id);
+      setIsOpen(false);
+      await reloadSubjects();
+      showUndo({
+        message: `Deleted subject “${subject.name}”`,
+        onUndone: reloadSubjects,
+        receipt,
+      });
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : 'Failed to delete subject');
+    } finally {
+      setDeletingSubjectId(null);
+    }
+  }
+
   return (
     <div className="relative" ref={switcherRef}>
       <button
@@ -186,21 +235,35 @@ export function SubjectSwitcher() {
               const isSelected = subject.id === selectedSubjectId;
 
               return (
-                <button
-                  className={`flex w-full items-center justify-between rounded-md px-3 py-2 text-left transition ${
+                <div
+                  className={`flex w-full items-center rounded-md transition ${
                     isSelected
                       ? 'bg-primary text-primary-foreground'
                       : 'text-muted-foreground hover:bg-secondary hover:text-secondary-foreground'
                   }`}
                   key={subject.id}
-                  onClick={() => {
-                    handleSelectSubject(subject.id);
-                  }}
-                  type="button"
                 >
-                  <span className="text-sm font-medium">{subject.name}</span>
-                  <span className="text-xs opacity-80">Subject</span>
-                </button>
+                  <button
+                    className="min-w-0 flex-1 px-3 py-2 text-left"
+                    onClick={() => {
+                      handleSelectSubject(subject.id);
+                    }}
+                    type="button"
+                  >
+                    <span className="block truncate text-sm font-medium">{subject.name}</span>
+                  </button>
+                  <button
+                    aria-label={`Delete ${subject.name}`}
+                    className="mr-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-md opacity-75 transition hover:bg-background/20 hover:opacity-100 disabled:cursor-not-allowed disabled:opacity-40"
+                    disabled={deletingSubjectId === subject.id}
+                    onClick={() => {
+                      handleDeleteSubject(subject);
+                    }}
+                    type="button"
+                  >
+                    <Trash2 aria-hidden="true" size={15} />
+                  </button>
+                </div>
               );
             })}
 

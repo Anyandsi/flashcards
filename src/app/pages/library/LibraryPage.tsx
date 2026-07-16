@@ -3,6 +3,7 @@ import { Check, Pencil, Plus, Trash2, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import type { Deck } from '../../../models/decks';
 import type { Subject } from '../../../models/subjects';
+import { useDeletionFeedback } from '../../../components/feedback/DeletionFeedback';
 import { announceReviewProgressChange } from '../../review/reviewEvents';
 import { routes } from '../../routes';
 
@@ -13,6 +14,7 @@ function getSubjectName(subjects: Subject[], subjectId: string | null) {
 }
 
 export function LibraryPage() {
+  const { confirmDeletion, showUndo } = useDeletionFeedback();
   const [decks, setDecks] = useState<Deck[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [currentSubjectId, setCurrentSubjectId] = useState<string | null>(null);
@@ -158,13 +160,30 @@ export function LibraryPage() {
     }
   }
 
-  async function handleDeleteDeck(deckId: string) {
+  async function handleDeleteDeck(deck: Deck) {
+    const confirmed = await confirmDeletion({
+      description: `This will delete the topic and all ${deck.cardCount} cards inside it. You can undo this for a short time.`,
+      title: `Delete “${deck.name}”?`,
+    });
+
+    if (!confirmed) {
+      return;
+    }
+
     setErrorMessage(null);
 
     try {
-      await window.api.decks.delete(deckId);
-      setDecks((currentDecks) => currentDecks.filter((deck) => deck.id !== deckId));
+      const receipt = await window.api.decks.delete(deck.id);
+      setDecks((currentDecks) => currentDecks.filter((currentDeck) => currentDeck.id !== deck.id));
       announceReviewProgressChange();
+      showUndo({
+        message: `Deleted topic “${deck.name}”`,
+        onUndone: async () => {
+          await loadDeckData();
+          announceReviewProgressChange();
+        },
+        receipt,
+      });
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : 'Failed to delete topic');
     }
@@ -316,7 +335,7 @@ export function LibraryPage() {
                         aria-label={`Delete ${deck.name}`}
                         className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition hover:bg-secondary hover:text-destructive"
                         onClick={() => {
-                          handleDeleteDeck(deck.id);
+                          handleDeleteDeck(deck);
                         }}
                         type="button"
                       >

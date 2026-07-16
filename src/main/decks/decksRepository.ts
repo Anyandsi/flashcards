@@ -8,8 +8,10 @@ import type {
   UpdateCardInput,
   UpdateDeckInput,
 } from '../../models/decks';
+import type { DeletionReceipt } from '../../models/deletions';
 import { ReviewRating } from '../../models/review';
 import { getDatabase } from '../db/database';
+import { createDeletionReceipt } from '../deletions/deletionsRepository';
 
 type CardRow = {
   contents_json: string;
@@ -18,6 +20,16 @@ type CardRow = {
   last_review_date: string | null;
   review_rating: string | null;
   title: string;
+};
+
+type StoredCardRow = CardRow & {
+  position: number;
+};
+
+type StoredDeckRow = {
+  id: string;
+  name: string;
+  subject_id: string;
 };
 
 type DeckRow = {
@@ -330,14 +342,35 @@ export function setCardReviewRating(cardId: string, rating: ReviewRating): Card 
   return getCard(cardId);
 }
 
-export function deleteCard(cardId: string): string {
-  const result = getDatabase().prepare('DELETE FROM cards WHERE id = ?').run(cardId);
+export function deleteCard(cardId: string): DeletionReceipt {
+  const db = getDatabase();
+  const card = db
+    .prepare(
+      `
+      SELECT id, title, contents_json, deck_id, position, review_rating, last_review_date
+      FROM cards
+      WHERE id = ?
+      `,
+    )
+    .get(cardId) as StoredCardRow | undefined;
 
-  if (!result.changes) {
+  if (!card) {
     throw new Error('Card does not exist');
   }
 
-  return cardId;
+  db.prepare('DELETE FROM cards WHERE id = ?').run(cardId);
+
+  return createDeletionReceipt('card', card.title, () => {
+    requireDeck(db, card.deck_id);
+    db.prepare(
+      `
+      INSERT INTO cards
+        (id, title, contents_json, deck_id, position, review_rating, last_review_date)
+      VALUES
+        (@id, @title, @contents_json, @deck_id, @position, @review_rating, @last_review_date)
+      `,
+    ).run(card);
+  });
 }
 
 export function listDecks(): Deck[] {
@@ -419,12 +452,52 @@ export function updateDeck(deckId: string, input: UpdateDeckInput): Deck {
   return getDeck(deckId);
 }
 
-export function deleteDeck(deckId: string): string {
-  const result = getDatabase().prepare('DELETE FROM decks WHERE id = ?').run(deckId);
+export function deleteDeck(deckId: string): DeletionReceipt {
+  const db = getDatabase();
+  const deck = db
+    .prepare('SELECT id, name, subject_id FROM decks WHERE id = ?')
+    .get(deckId) as StoredDeckRow | undefined;
 
-  if (!result.changes) {
+  if (!deck) {
     throw new Error('Deck does not exist');
   }
 
-  return deckId;
+  const cards = db
+    .prepare(
+      `
+      SELECT id, title, contents_json, deck_id, position, review_rating, last_review_date
+      FROM cards
+      WHERE deck_id = ?
+      ORDER BY position ASC
+      `,
+    )
+    .all(deckId) as StoredCardRow[];
+
+  db.prepare('DELETE FROM decks WHERE id = ?').run(deckId);
+
+  return createDeletionReceipt('topic', deck.name, () => {
+    const restoreDeck = db.transaction(() => {
+      const subjectExists = db.prepare('SELECT id FROM subjects WHERE id = ?').get(deck.subject_id);
+
+      if (!subjectExists) {
+        throw new Error('The topic cannot be restored because its subject no longer exists');
+      }
+
+      db.prepare('INSERT INTO decks (id, name, subject_id) VALUES (@id, @name, @subject_id)').run(deck);
+      const insertCard = db.prepare(
+        `
+        INSERT INTO cards
+          (id, title, contents_json, deck_id, position, review_rating, last_review_date)
+        VALUES
+          (@id, @title, @contents_json, @deck_id, @position, @review_rating, @last_review_date)
+        `,
+      );
+
+      for (const card of cards) {
+        insertCard.run(card);
+      }
+    });
+
+    restoreDeck();
+  });
 }
