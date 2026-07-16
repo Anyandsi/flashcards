@@ -4,6 +4,7 @@ import { contextBridge, ipcRenderer } from 'electron';
 import type { SaveImageAttachmentInput, SavedImageAttachment } from './models/attachments';
 import type { Card, CreateCardInput, CreateDeckInput, Deck, UpdateCardInput, UpdateDeckInput } from './models/decks';
 import type { DeletionReceipt } from './models/deletions';
+import type { SaveMarkdownExportInput } from './models/exports';
 import type { CreateSubjectInput, Session, SessionHistoryItem, Subject } from './models/subjects';
 import type { ReviewRating, SubjectReviewProgress } from './models/review';
 
@@ -37,6 +38,10 @@ contextBridge.exposeInMainWorld('api', {
   deletions: {
     undo: (deletionId: string) =>
       ipcRenderer.invoke('deletions:undo', deletionId) as Promise<DeletionReceipt>,
+  },
+  exports: {
+    saveMarkdown: (input: SaveMarkdownExportInput) =>
+      ipcRenderer.invoke('exports:save-markdown', input) as Promise<boolean>,
   },
   review: {
     getSubjectProgress: (subjectId: string) =>

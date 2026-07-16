@@ -1,4 +1,4 @@
-import { ArrowLeft, LayoutGrid, NotebookText, Pencil, Plus, Trash2 } from 'lucide-react';
+import { ArrowLeft, FileDown, LayoutGrid, NotebookText, Pencil, Plus, Trash2 } from 'lucide-react';
 import { Link, useParams } from 'react-router-dom';
 import { useEffect, useMemo, useState } from 'react';
 import type { Card, Deck } from '../../../models/decks';
@@ -16,6 +16,8 @@ export function TopicPage() {
   const [cards, setCards] = useState<Card[]>([]);
   const [viewMode, setViewMode] = useState<TopicViewMode>('cards');
   const [isLoading, setIsLoading] = useState(true);
+  const [isExporting, setIsExporting] = useState(false);
+  const [exportMessage, setExportMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const combinedMarkdown = useMemo(
     () =>
@@ -114,6 +116,32 @@ export function TopicPage() {
     }
   }
 
+  // TODO: add support for image export
+  async function handleExportMarkdown() {
+    if (!topic || !cards.length || isExporting) {
+      return;
+    }
+
+    setIsExporting(true);
+    setExportMessage(null);
+    setErrorMessage(null);
+
+    try {
+      const wasSaved = await window.api.exports.saveMarkdown({
+        contents: combinedMarkdown,
+        suggestedName: topic.name,
+      });
+
+      if (wasSaved) {
+        setExportMessage('Markdown file saved');
+      }
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : 'Failed to export Markdown');
+    } finally {
+      setIsExporting(false);
+    }
+  }
+
   if (!topicId) {
     return (
       <section className="rounded-md border border-border bg-card p-6 text-sm text-destructive">
@@ -173,6 +201,16 @@ export function TopicPage() {
             </button>
           </div>
 
+          <button
+            className="flex h-10 items-center justify-center gap-2 rounded-md border border-border bg-card px-4 text-sm font-semibold text-card-foreground transition hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-50"
+            disabled={!topic || !cards.length || isExporting}
+            onClick={handleExportMarkdown}
+            type="button"
+          >
+            <FileDown size={16} aria-hidden="true" />
+            {isExporting ? 'Exporting...' : 'Export .md'}
+          </button>
+
           <Link
             className="flex h-10 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground transition hover:opacity-90"
             to={routes.addCard(topicId)}
@@ -187,6 +225,7 @@ export function TopicPage() {
             ? 'Add, edit, and delete cards in this topic.'
             : 'Read every card in this topic as one combined note.'}
         </p>
+        {exportMessage ? <p className="mt-2 text-sm text-success">{exportMessage}</p> : null}
       </div>
 
       {errorMessage ? (

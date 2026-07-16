@@ -1,6 +1,7 @@
 import type { SaveImageAttachmentInput, SavedImageAttachment } from './models/attachments';
 import type { Card, CreateCardInput, CreateDeckInput, Deck, UpdateCardInput, UpdateDeckInput } from './models/decks';
 import type { DeletionReceipt } from './models/deletions';
+import type { SaveMarkdownExportInput } from './models/exports';
 import type { CreateSubjectInput, Session, SessionHistoryItem, Subject } from './models/subjects';
 import type { ReviewRating, SubjectReviewProgress } from './models/review';
 
@@ -25,6 +26,9 @@ type ElectronApi = {
   };
   deletions: {
     undo: (deletionId: string) => Promise<DeletionReceipt>;
+  };
+  exports: {
+    saveMarkdown: (input: SaveMarkdownExportInput) => Promise<boolean>;
   };
   review: {
     getSubjectProgress: (subjectId: string) => Promise<SubjectReviewProgress>;

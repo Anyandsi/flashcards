@@ -6,6 +6,7 @@ import { registerAttachmentProtocol } from './main/attachments/attachmentsProtoc
 import { closeDatabase } from './main/db/database';
 import { registerDeckHandlers } from './main/decks/decksIpc';
 import { registerDeletionHandlers } from './main/deletions/deletionsIpc';
+import { registerExportHandlers } from './main/exports/exportsIpc';
 import { registerReviewHandlers } from './main/review/reviewIpc';
 import { configureRendererSecurity } from './main/security/rendererSecurity';
 import { registerSubjectHandlers } from './main/subjects/subjectsIpc';
@@ -24,6 +25,7 @@ protocol.registerSchemesAsPrivileged([
 registerAttachmentHandlers();
 registerDeckHandlers();
 registerDeletionHandlers();
+registerExportHandlers();
 registerReviewHandlers();
 registerSubjectHandlers();
 
