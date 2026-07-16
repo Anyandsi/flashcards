@@ -172,7 +172,7 @@ export function LibraryPage() {
 
   return (
     <section className="flex flex-col gap-5">
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="text-sm font-medium text-accent">Library</p>
           <h1 className="mt-3 text-2xl font-semibold">Topic library</h1>
@@ -180,37 +180,39 @@ export function LibraryPage() {
             Create and organize topics for {currentSubjectName}.
           </p>
         </div>
-      </div>
 
-      <div className="rounded-md border border-border bg-card p-5 text-card-foreground">
-        <div className="flex flex-col gap-3 md:flex-row">
-          <input
-            className="h-10 min-w-0 flex-1 rounded-md border border-border bg-background px-3 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
-            disabled={!currentSubjectId || isSaving}
-            onChange={(event) => {
-              setNewDeckName(event.target.value);
-            }}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter') {
-                handleCreateDeck();
-              }
-            }}
-            placeholder={currentSubjectId ? 'New topic name' : 'Create a subject first'}
-            type="text"
-            value={newDeckName}
-          />
-          <button
-            className="flex h-10 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-            disabled={!newDeckName.trim() || !currentSubjectId || isSaving}
-            onClick={handleCreateDeck}
-            type="button"
-          >
-            <Plus size={16} aria-hidden="true" />
-            {isSaving ? 'Saving...' : 'Create topic'}
-          </button>
+        <div className="w-full sm:w-auto">
+          <div className="flex gap-2">
+            <input
+              className="h-10 min-w-0 flex-1 rounded-md border border-border bg-card px-3 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary sm:w-48 sm:flex-none"
+              disabled={!currentSubjectId || isSaving}
+              onChange={(event) => {
+                setNewDeckName(event.target.value);
+              }}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') {
+                  handleCreateDeck();
+                }
+              }}
+              placeholder={currentSubjectId ? 'New topic name' : 'Create a subject first'}
+              type="text"
+              value={newDeckName}
+            />
+            <button
+              className="flex h-10 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={!newDeckName.trim() || !currentSubjectId || isSaving}
+              onClick={handleCreateDeck}
+              type="button"
+            >
+              <Plus size={16} aria-hidden="true" />
+              {isSaving ? 'Saving...' : 'Create topic'}
+            </button>
+          </div>
+
+          {errorMessage ? (
+            <p className="mt-2 text-right text-sm text-destructive">{errorMessage}</p>
+          ) : null}
         </div>
-
-        {errorMessage ? <p className="mt-3 text-sm text-destructive">{errorMessage}</p> : null}
       </div>
 
       {isLoading ? (
