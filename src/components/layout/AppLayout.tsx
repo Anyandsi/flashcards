@@ -6,8 +6,8 @@ type AppLayoutProps = {
 
 export function AppLayout({ children }: AppLayoutProps) {
   return (
-    <main className="min-h-screen bg-background text-foreground">
-      <div className="min-h-screen">{children}</div>
+    <main className="h-screen overflow-hidden bg-background text-foreground">
+      <div className="h-full">{children}</div>
     </main>
   );
 }
