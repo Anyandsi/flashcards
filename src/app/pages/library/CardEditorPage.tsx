@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { CardEditorForm } from '../../../components/cards/CardEditorForm';
 import type { Card, CardContents, Deck } from '../../../models/decks';
+import { announceReviewProgressChange } from '../../review/reviewEvents';
 import { routes } from '../../routes';
 
 type CardEditorValues = {
@@ -76,6 +77,7 @@ export function CardEditorPage() {
         await window.api.cards.update(cardId, values);
       } else {
         await window.api.cards.createInDeck(topicId, values);
+        announceReviewProgressChange();
       }
 
       navigate(routes.topic(topicId));

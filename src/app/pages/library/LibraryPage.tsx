@@ -3,6 +3,7 @@ import { Check, Pencil, Plus, Trash2, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import type { Deck } from '../../../models/decks';
 import type { Subject } from '../../../models/subjects';
+import { announceReviewProgressChange } from '../../review/reviewEvents';
 import { routes } from '../../routes';
 
 const currentSubjectChangeEvent = 'current-subject-change';
@@ -110,6 +111,7 @@ export function LibraryPage() {
 
       setDecks((currentDecks) => [...currentDecks, deck]);
       setNewDeckName('');
+      announceReviewProgressChange();
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : 'Failed to create topic');
     } finally {
@@ -162,6 +164,7 @@ export function LibraryPage() {
     try {
       await window.api.decks.delete(deckId);
       setDecks((currentDecks) => currentDecks.filter((deck) => deck.id !== deckId));
+      announceReviewProgressChange();
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : 'Failed to delete topic');
     }

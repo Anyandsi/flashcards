@@ -6,6 +6,7 @@ import type {
   UpdateCardInput,
   UpdateDeckInput,
 } from '../../models/decks';
+import { ReviewRating } from '../../models/review';
 import { trustedIpcHandler } from '../security/rendererSecurity';
 import {
   createCardInDeck,
@@ -16,6 +17,7 @@ import {
   getDeck,
   listCardsByDeck,
   listDecks,
+  setCardReviewRating,
   updateCard,
   updateDeck,
 } from './decksRepository';
@@ -108,6 +110,17 @@ function parseId(value: unknown, label: string): string {
   return value;
 }
 
+function parseReviewRating(value: unknown): ReviewRating {
+  switch (value) {
+    case ReviewRating.Bad:
+    case ReviewRating.Good:
+    case ReviewRating.Perfect:
+      return value;
+    default:
+      throw new Error('Review rating is invalid');
+  }
+}
+
 export function registerDeckHandlers() {
   ipcMain.handle(
     'cards:list-by-deck',
@@ -129,6 +142,12 @@ export function registerDeckHandlers() {
     'cards:update',
     trustedIpcHandler((_event, cardId: unknown, input: unknown) =>
       updateCard(parseId(cardId, 'Card id'), parseUpdateCardInput(input)),
+    ),
+  );
+  ipcMain.handle(
+    'cards:set-review-rating',
+    trustedIpcHandler((_event, cardId: unknown, rating: unknown) =>
+      setCardReviewRating(parseId(cardId, 'Card id'), parseReviewRating(rating)),
     ),
   );
   ipcMain.handle(

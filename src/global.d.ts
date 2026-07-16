@@ -1,6 +1,7 @@
 import type { SaveImageAttachmentInput, SavedImageAttachment } from './models/attachments';
 import type { Card, CreateCardInput, CreateDeckInput, Deck, UpdateCardInput, UpdateDeckInput } from './models/decks';
 import type { CreateSubjectInput, Session, SessionHistoryItem, Subject } from './models/subjects';
+import type { ReviewRating, SubjectReviewProgress } from './models/review';
 
 type ElectronApi = {
   attachments: {
@@ -11,6 +12,7 @@ type ElectronApi = {
     get: (cardId: string) => Promise<Card>;
     createInDeck: (deckId: string, input: CreateCardInput) => Promise<Card>;
     update: (cardId: string, input: UpdateCardInput) => Promise<Card>;
+    setReviewRating: (cardId: string, rating: ReviewRating) => Promise<Card>;
     delete: (cardId: string) => Promise<string>;
   };
   decks: {
@@ -19,6 +21,9 @@ type ElectronApi = {
     create: (input: CreateDeckInput) => Promise<Deck>;
     update: (deckId: string, input: UpdateDeckInput) => Promise<Deck>;
     delete: (deckId: string) => Promise<string>;
+  };
+  review: {
+    getSubjectProgress: (subjectId: string) => Promise<SubjectReviewProgress>;
   };
   subjects: {
     list: () => Promise<Subject[]>;

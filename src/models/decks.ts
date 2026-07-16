@@ -1,3 +1,5 @@
+import type { ReviewRating } from './review';
+
 export type MarkdownCardContents = {
   markdown: string;
   type: 'markdown';
@@ -9,6 +11,8 @@ export type Card = {
   contents: CardContents;
   deckId: string;
   id: string;
+  lastReviewDate: string | null;
+  reviewRating: ReviewRating | null;
   title: string;
 };
 

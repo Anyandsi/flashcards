@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import type { Card, Deck } from '../../../models/decks';
 import { MarkdownPreview } from '../../../components/cards/MarkdownPreview';
+import { announceReviewProgressChange } from '../../review/reviewEvents';
 import { routes } from '../../routes';
 
 export function TopicPage() {
@@ -65,6 +66,7 @@ export function TopicPage() {
         ...topic,
         cardCount: Math.max(topic.cardCount - 1, 0),
       });
+      announceReviewProgressChange();
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : 'Failed to delete card');
     }

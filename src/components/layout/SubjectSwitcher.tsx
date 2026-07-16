@@ -58,6 +58,7 @@ export function SubjectSwitcher() {
 
         if (initialSubjectId && initialSubjectId !== currentSubjectId) {
           await window.api.subjects.setCurrent(initialSubjectId);
+          announceCurrentSubjectChange(initialSubjectId);
         }
       } catch (error) {
         if (isMounted) {

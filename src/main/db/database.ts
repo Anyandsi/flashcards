@@ -142,6 +142,18 @@ function migrateCardsToDeckOwnership(db: Database.Database) {
   migrateStoredCards();
 }
 
+function migrateCardReviewRating(db: Database.Database) {
+  const cardColumns = db.prepare('PRAGMA table_info(cards)').all() as Array<{ name: string }>;
+
+  if (!cardColumns.some((column) => column.name === 'review_rating')) {
+    db.exec('ALTER TABLE cards ADD COLUMN review_rating TEXT');
+  }
+
+  if (!cardColumns.some((column) => column.name === 'last_review_date')) {
+    db.exec('ALTER TABLE cards ADD COLUMN last_review_date TEXT');
+  }
+}
+
 export function migrateDatabase(db: Database.Database) {
   db.exec(`
     CREATE TABLE IF NOT EXISTS subjects (
@@ -176,6 +188,8 @@ export function migrateDatabase(db: Database.Database) {
       contents_json TEXT NOT NULL,
       deck_id TEXT NOT NULL,
       position INTEGER NOT NULL,
+      review_rating TEXT,
+      last_review_date TEXT,
       FOREIGN KEY (deck_id) REFERENCES decks(id) ON DELETE CASCADE
     );
   `);
@@ -187,6 +201,7 @@ export function migrateDatabase(db: Database.Database) {
   }
 
   migrateCardsToDeckOwnership(db);
+  migrateCardReviewRating(db);
   db.exec(`
     CREATE INDEX IF NOT EXISTS cards_deck_id_position_index
       ON cards(deck_id, position);

@@ -5,6 +5,7 @@ export const routes = {
   library: '/library',
   overview: '/overview',
   review: '/review',
+  reviewTopic: (topicId: string) => `/review/${topicId}`,
   root: '/',
   topic: (topicId: string) => `/library/${topicId}`,
 } as const;
@@ -12,5 +13,6 @@ export const routes = {
 export const routePatterns = {
   addCard: '/library/:topicId/add-card',
   editCard: '/library/:topicId/cards/:cardId/edit',
+  reviewTopic: '/review/:topicId',
   topic: '/library/:topicId',
 } as const;

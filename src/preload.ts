@@ -4,6 +4,7 @@ import { contextBridge, ipcRenderer } from 'electron';
 import type { SaveImageAttachmentInput, SavedImageAttachment } from './models/attachments';
 import type { Card, CreateCardInput, CreateDeckInput, Deck, UpdateCardInput, UpdateDeckInput } from './models/decks';
 import type { CreateSubjectInput, Session, SessionHistoryItem, Subject } from './models/subjects';
+import type { ReviewRating, SubjectReviewProgress } from './models/review';
 
 contextBridge.exposeInMainWorld('api', {
   attachments: {
@@ -18,6 +19,8 @@ contextBridge.exposeInMainWorld('api', {
       ipcRenderer.invoke('cards:create-in-deck', deckId, input) as Promise<Card>,
     update: (cardId: string, input: UpdateCardInput) =>
       ipcRenderer.invoke('cards:update', cardId, input) as Promise<Card>,
+    setReviewRating: (cardId: string, rating: ReviewRating) =>
+      ipcRenderer.invoke('cards:set-review-rating', cardId, rating) as Promise<Card>,
     delete: (cardId: string) => ipcRenderer.invoke('cards:delete', cardId) as Promise<string>,
   },
   decks: {
@@ -27,6 +30,10 @@ contextBridge.exposeInMainWorld('api', {
     update: (deckId: string, input: UpdateDeckInput) =>
       ipcRenderer.invoke('decks:update', deckId, input) as Promise<Deck>,
     delete: (deckId: string) => ipcRenderer.invoke('decks:delete', deckId) as Promise<string>,
+  },
+  review: {
+    getSubjectProgress: (subjectId: string) =>
+      ipcRenderer.invoke('review:get-subject-progress', subjectId) as Promise<SubjectReviewProgress>,
   },
   subjects: {
     list: () => ipcRenderer.invoke('subjects:list') as Promise<Subject[]>,

@@ -5,6 +5,7 @@ import { registerAttachmentHandlers } from './main/attachments/attachmentsIpc';
 import { registerAttachmentProtocol } from './main/attachments/attachmentsProtocol';
 import { closeDatabase } from './main/db/database';
 import { registerDeckHandlers } from './main/decks/decksIpc';
+import { registerReviewHandlers } from './main/review/reviewIpc';
 import { configureRendererSecurity } from './main/security/rendererSecurity';
 import { registerSubjectHandlers } from './main/subjects/subjectsIpc';
 
@@ -21,6 +22,7 @@ protocol.registerSchemesAsPrivileged([
 
 registerAttachmentHandlers();
 registerDeckHandlers();
+registerReviewHandlers();
 registerSubjectHandlers();
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.

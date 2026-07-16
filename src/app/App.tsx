@@ -7,6 +7,7 @@ import { LibraryPage } from './pages/library/LibraryPage';
 import { TopicPage } from './pages/library/TopicPage';
 import { OverviewPage } from './pages/OverviewPage';
 import { ReviewPage } from './pages/ReviewPage';
+import { ReviewTopicPage } from './pages/ReviewTopicPage';
 import { routePatterns, routes } from './routes';
 
 export function App() {
@@ -21,6 +22,7 @@ export function App() {
               <Routes>
                 <Route path={routes.root} element={<Navigate to={routes.review} replace />} />
                 <Route path={routes.review} element={<ReviewPage />} />
+                <Route path={routePatterns.reviewTopic} element={<ReviewTopicPage />} />
                 <Route path={routes.legacyDecks} element={<Navigate to={routes.library} replace />} />
                 <Route path={routes.library} element={<LibraryPage />} />
                 <Route path={routePatterns.topic} element={<TopicPage />} />

@@ -8,12 +8,15 @@ import type {
   UpdateCardInput,
   UpdateDeckInput,
 } from '../../models/decks';
+import { ReviewRating } from '../../models/review';
 import { getDatabase } from '../db/database';
 
 type CardRow = {
   contents_json: string;
   deck_id: string;
   id: string;
+  last_review_date: string | null;
+  review_rating: string | null;
   title: string;
 };
 
@@ -125,11 +128,26 @@ function validateCardContents(contents: CardContents) {
   }
 }
 
+function parseStoredReviewRating(value: string | null): ReviewRating | null {
+  switch (value) {
+    case null:
+      return null;
+    case ReviewRating.Bad:
+    case ReviewRating.Good:
+    case ReviewRating.Perfect:
+      return value;
+    default:
+      throw new Error('Stored card review rating is invalid');
+  }
+}
+
 function toCard(row: CardRow): Card {
   return {
     contents: parseCardContents(row.contents_json),
     deckId: row.deck_id,
     id: row.id,
+    lastReviewDate: row.last_review_date,
+    reviewRating: parseStoredReviewRating(row.review_rating),
     title: row.title,
   };
 }
@@ -177,6 +195,8 @@ function buildCard(deckId: string, input: CreateCardInput): Card {
     contents,
     deckId,
     id: randomUUID(),
+    lastReviewDate: null,
+    reviewRating: null,
     title,
   };
 }
@@ -189,7 +209,7 @@ export function listCardsByDeck(deckId: string): Card[] {
   const rows = db
     .prepare(
       `
-      SELECT id, title, contents_json, deck_id
+      SELECT id, title, contents_json, deck_id, review_rating, last_review_date
       FROM cards
       WHERE deck_id = ?
       ORDER BY position ASC
@@ -202,7 +222,13 @@ export function listCardsByDeck(deckId: string): Card[] {
 
 export function getCard(cardId: string): Card {
   const row = getDatabase()
-    .prepare('SELECT id, title, contents_json, deck_id FROM cards WHERE id = ?')
+    .prepare(
+      `
+      SELECT id, title, contents_json, deck_id, review_rating, last_review_date
+      FROM cards
+      WHERE id = ?
+      `,
+    )
     .get(cardId) as CardRow | undefined;
 
   if (!row) {
@@ -231,14 +257,18 @@ export function createCardInDeck(deckId: string, input: CreateCardInput): Card {
 
     db.prepare(
       `
-      INSERT INTO cards (id, title, contents_json, deck_id, position)
-      VALUES (@id, @title, @contentsJson, @deckId, @position)
+      INSERT INTO cards
+        (id, title, contents_json, deck_id, position, review_rating, last_review_date)
+      VALUES
+        (@id, @title, @contentsJson, @deckId, @position, @reviewRating, @lastReviewDate)
       `,
     ).run({
       contentsJson: JSON.stringify(card.contents),
       deckId: card.deckId,
       id: card.id,
+      lastReviewDate: card.lastReviewDate,
       position: nextPosition,
+      reviewRating: card.reviewRating,
       title: card.title,
     });
   });
@@ -273,6 +303,29 @@ export function updateCard(cardId: string, input: UpdateCardInput): Card {
       id: cardId,
       title: nextTitle,
     });
+
+  return getCard(cardId);
+}
+
+export function setCardReviewRating(cardId: string, rating: ReviewRating): Card {
+  const result = getDatabase()
+    .prepare(
+      `
+      UPDATE cards
+      SET review_rating = @rating,
+          last_review_date = @lastReviewDate
+      WHERE id = @cardId
+      `,
+    )
+    .run({
+      cardId,
+      lastReviewDate: new Date().toISOString(),
+      rating,
+    });
+
+  if (!result.changes) {
+    throw new Error('Card does not exist');
+  }
 
   return getCard(cardId);
 }
