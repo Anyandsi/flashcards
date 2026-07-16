@@ -188,7 +188,7 @@ export function ReviewTopicPage() {
               return (
                 <div
                   aria-hidden="true"
-                  className="absolute inset-x-2 bottom-14 top-2 rounded-lg border-2 border-primary/40 bg-secondary shadow-md"
+                  className="absolute inset-x-2 bottom-14 top-2 rounded-lg bg-secondary shadow-md"
                   key={depth}
                   style={{
                     transform: `translateY(${depth * 10}px) scale(${1 - depth * 0.01})`,
