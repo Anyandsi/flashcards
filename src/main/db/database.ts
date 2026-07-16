@@ -31,9 +31,12 @@ function createRecoveryDeck(db: Database.Database) {
 
   if (!subject) {
     subject = { id: randomUUID() };
-    db.prepare('INSERT INTO subjects (id, name, time_spent) VALUES (?, ?, 0)').run(
+    db.prepare(
+      'INSERT INTO subjects (id, name, time_spent, created_at) VALUES (?, ?, 0, ?)',
+    ).run(
       subject.id,
       'Recovered',
+      new Date().toISOString(),
     );
     db.prepare(
       `
@@ -159,7 +162,8 @@ export function migrateDatabase(db: Database.Database) {
     CREATE TABLE IF NOT EXISTS subjects (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL UNIQUE,
-      time_spent INTEGER NOT NULL DEFAULT 0
+      time_spent INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
 
     CREATE TABLE IF NOT EXISTS sessions (
@@ -199,6 +203,14 @@ export function migrateDatabase(db: Database.Database) {
   if (!subjectColumns.some((column) => column.name === 'time_spent')) {
     db.exec('ALTER TABLE subjects ADD COLUMN time_spent INTEGER NOT NULL DEFAULT 0');
   }
+
+  if (!subjectColumns.some((column) => column.name === 'created_at')) {
+    db.exec('ALTER TABLE subjects ADD COLUMN created_at TEXT');
+  }
+
+  db.prepare('UPDATE subjects SET created_at = ? WHERE created_at IS NULL').run(
+    new Date().toISOString(),
+  );
 
   migrateCardsToDeckOwnership(db);
   migrateCardReviewRating(db);

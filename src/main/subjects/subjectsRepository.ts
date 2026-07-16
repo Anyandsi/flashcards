@@ -113,8 +113,16 @@ export function createSubject(input: CreateSubjectInput): Subject {
   };
 
   getDatabase()
-    .prepare('INSERT INTO subjects (id, name, time_spent) VALUES (@id, @name, @timeSpent)')
-    .run(subject);
+    .prepare(
+      `
+      INSERT INTO subjects (id, name, time_spent, created_at)
+      VALUES (@id, @name, @timeSpent, @createdAt)
+      `,
+    )
+    .run({
+      ...subject,
+      createdAt: new Date().toISOString(),
+    });
 
   if (!getCurrentSubjectId()) {
     setCurrentSubjectId(subject.id);
