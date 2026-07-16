@@ -159,12 +159,6 @@ export function ReviewTopicPage() {
           <p className="mt-5 text-sm font-medium text-primary">Review</p>
           <h1 className="mt-3 text-2xl font-semibold">{topic?.name ?? 'Topic review'}</h1>
         </div>
-
-        {!isLoading && initialCardCount ? (
-          <p className="text-sm text-muted-foreground">
-            {reviewedCardCount} of {initialCardCount} reviewed
-          </p>
-        ) : null}
       </div>
 
       {errorMessage ? (

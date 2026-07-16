@@ -1,4 +1,4 @@
-import { Timer } from 'lucide-react';
+import { Pause, Play, Timer } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { reviewProgressChangeEvent } from '../../app/review/reviewEvents';
@@ -36,6 +36,7 @@ export function TopBar() {
   const location = useLocation();
   const progressRequestId = useRef(0);
   const [isActive, setIsActive] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [activeSubjectId, setActiveSubjectId] = useState<string | null>(null);
   const [reviewProgress, setReviewProgress] = useState<SubjectReviewProgress | null>(null);
@@ -93,6 +94,10 @@ export function TopBar() {
       return undefined;
     }
 
+    if (isPaused) {
+      return undefined;
+    }
+
     const intervalId = window.setInterval(() => {
       setElapsedSeconds((currentSeconds) => currentSeconds + 1);
     }, 1000);
@@ -100,12 +105,13 @@ export function TopBar() {
     return () => {
       window.clearInterval(intervalId);
     };
-  }, [isActive]);
+  }, [isActive, isPaused]);
 
   async function handleToggleGrinding() {
     if (!isActive) {
       setActiveSubjectId(await window.api.subjects.getCurrent());
       setElapsedSeconds(0);
+      setIsPaused(false);
       setIsActive(true);
       return;
     }
@@ -114,6 +120,7 @@ export function TopBar() {
     const subjectId = activeSubjectId;
 
     setIsActive(false);
+    setIsPaused(false);
     setActiveSubjectId(null);
 
     if (subjectId && secondsToSave >= minimumSessionSeconds) {
@@ -121,14 +128,29 @@ export function TopBar() {
     }
   }
 
+  function handleTogglePause() {
+    if (isActive) {
+      setIsPaused((currentValue) => !currentValue);
+    }
+  }
+
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.code !== 'Space' || event.repeat || isInteractiveTarget(event.target)) {
+      const isGrindingToggle =
+        event.target instanceof HTMLElement &&
+        !!event.target.closest('[data-grinding-toggle]');
+
+      if (
+        !isActive ||
+        event.code !== 'Space' ||
+        event.repeat ||
+        (isInteractiveTarget(event.target) && !isGrindingToggle)
+      ) {
         return;
       }
 
       event.preventDefault();
-      handleToggleGrinding();
+      handleTogglePause();
     };
 
     window.addEventListener('keydown', handleKeyDown);
@@ -136,7 +158,7 @@ export function TopBar() {
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [activeSubjectId, elapsedSeconds, isActive]);
+  }, [isActive]);
 
   return (
     <header className="flex min-h-16 shrink-0 flex-wrap items-center gap-4 border-b border-border bg-background px-6 py-3">
@@ -159,9 +181,29 @@ export function TopBar() {
           <time dateTime={`PT${elapsedSeconds}S`}>{elapsedTime}</time>
         </div>
 
+        {isActive ? (
+          <button
+            aria-keyshortcuts="Space"
+            className="flex h-9 items-center justify-center gap-2 rounded-md border border-border px-3 text-sm font-semibold text-muted-foreground transition hover:bg-secondary hover:text-secondary-foreground"
+            onClick={handleTogglePause}
+            type="button"
+          >
+            {isPaused ? (
+              <Play aria-hidden="true" size={16} />
+            ) : (
+              <Pause aria-hidden="true" size={16} />
+            )}
+            {isPaused ? 'Resume' : 'Pause'}
+          </button>
+        ) : null}
+
         <button
           className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition hover:opacity-90"
-          onClick={handleToggleGrinding}
+          data-grinding-toggle
+          onClick={(event) => {
+            event.currentTarget.blur();
+            void handleToggleGrinding();
+          }}
           type="button"
         >
           {isActive ? 'Stop grinding' : 'Start grinding'}

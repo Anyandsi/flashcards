@@ -31,7 +31,7 @@ export function ReviewRatingControls({ disabled, onRate }: ReviewRatingControlsP
         type="button"
       >
         <ThumbsUp aria-hidden="true" size={17} />
-        I know this one
+        I knew this one!
       </button>
       <button
         aria-keyshortcuts="3"

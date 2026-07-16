@@ -11,6 +11,7 @@ type DroppedImage = {
   src: string;
 };
 
+// TODO: saved images must be viwable in the UI and it must be possible to remove them after saving
 type MarkdownEditorProps = {
   onImageDrop?: (file: File) => Promise<DroppedImage>;
   onChange: (value: string) => void;
