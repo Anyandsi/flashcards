@@ -37,6 +37,10 @@ export function CardEditorPage() {
           cardId ? window.api.cards.get(cardId) : Promise.resolve(null),
         ]);
 
+        if (storedCard && storedCard.deckId !== topicId) {
+          throw new Error('Card does not belong to this topic');
+        }
+
         if (isMounted) {
           setTopic(storedTopic);
           setCard(storedCard);

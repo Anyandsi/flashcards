@@ -7,12 +7,13 @@ export type CardContents = MarkdownCardContents;
 
 export type Card = {
   contents: CardContents;
+  deckId: string;
   id: string;
   title: string;
 };
 
 export type Deck = {
-  cardIds: string[];
+  cardCount: number;
   id: string;
   name: string;
   subjectId: string;
@@ -26,7 +27,6 @@ export type CreateCardInput = {
 export type UpdateCardInput = Partial<CreateCardInput>;
 
 export type CreateDeckInput = {
-  cardIds?: string[];
   name: string;
   subjectId: string;
 };

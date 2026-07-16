@@ -12,19 +12,16 @@ import { getDatabase } from '../db/database';
 
 type CardRow = {
   contents_json: string;
+  deck_id: string;
   id: string;
   title: string;
 };
 
 type DeckRow = {
+  card_count: number;
   id: string;
   name: string;
   subject_id: string;
-};
-
-type DeckCardRow = {
-  card_id: string;
-  deck_id: string;
 };
 
 type IdRow = {
@@ -131,62 +128,19 @@ function validateCardContents(contents: CardContents) {
 function toCard(row: CardRow): Card {
   return {
     contents: parseCardContents(row.contents_json),
+    deckId: row.deck_id,
     id: row.id,
     title: row.title,
   };
 }
 
-function toDeck(row: DeckRow, cardIds: string[]): Deck {
+function toDeck(row: DeckRow): Deck {
   return {
-    cardIds,
+    cardCount: row.card_count,
     id: row.id,
     name: row.name,
     subjectId: row.subject_id,
   };
-}
-
-function getDeckCardIds(deckId: string) {
-  return getDatabase()
-    .prepare(
-      `
-      SELECT card_id
-      FROM deck_cards
-      WHERE deck_id = ?
-      ORDER BY position ASC
-      `,
-    )
-    .all(deckId)
-    .map((row) => (row as Pick<DeckCardRow, 'card_id'>).card_id);
-}
-
-function getDeckCardIdMap(deckIds: string[]) {
-  const cardIdsByDeckId = new Map<string, string[]>();
-
-  for (const deckId of deckIds) {
-    cardIdsByDeckId.set(deckId, []);
-  }
-
-  if (!deckIds.length) {
-    return cardIdsByDeckId;
-  }
-
-  const placeholders = deckIds.map(() => '?').join(', ');
-  const rows = getDatabase()
-    .prepare(
-      `
-      SELECT deck_id, card_id
-      FROM deck_cards
-      WHERE deck_id IN (${placeholders})
-      ORDER BY deck_id ASC, position ASC
-      `,
-    )
-    .all(...deckIds) as DeckCardRow[];
-
-  for (const row of rows) {
-    cardIdsByDeckId.get(row.deck_id)?.push(row.card_id);
-  }
-
-  return cardIdsByDeckId;
 }
 
 function requireSubject(subjectId: string) {
@@ -209,47 +163,7 @@ function requireDeck(database: ReturnType<typeof getDatabase>, deckId: string) {
   }
 }
 
-function getUniqueCardIds(cardIds: string[]) {
-  return Array.from(new Set(cardIds));
-}
-
-function requireCards(cardIds: string[]) {
-  const uniqueCardIds = getUniqueCardIds(cardIds);
-
-  if (!uniqueCardIds.length) {
-    return;
-  }
-
-  const placeholders = uniqueCardIds.map(() => '?').join(', ');
-  const storedCardIds = getDatabase()
-    .prepare(`SELECT id FROM cards WHERE id IN (${placeholders})`)
-    .all(...uniqueCardIds)
-    .map((row) => (row as IdRow).id);
-
-  if (storedCardIds.length !== uniqueCardIds.length) {
-    throw new Error('One or more cards do not exist');
-  }
-}
-
-function replaceDeckCardIds(deckId: string, cardIds: string[]) {
-  const db = getDatabase();
-  const uniqueCardIds = getUniqueCardIds(cardIds);
-
-  db.prepare('DELETE FROM deck_cards WHERE deck_id = ?').run(deckId);
-
-  const insertCard = db.prepare(
-    `
-    INSERT INTO deck_cards (deck_id, card_id, position)
-    VALUES (?, ?, ?)
-    `,
-  );
-
-  uniqueCardIds.forEach((cardId, position) => {
-    insertCard.run(deckId, cardId, position);
-  });
-}
-
-function buildCard(input: CreateCardInput): Card {
+function buildCard(deckId: string, input: CreateCardInput): Card {
   const title = input.title.trim();
   const contents = input.contents ?? emptyCardContents;
 
@@ -261,43 +175,34 @@ function buildCard(input: CreateCardInput): Card {
 
   return {
     contents,
+    deckId,
     id: randomUUID(),
     title,
   };
 }
 
-function insertCard(database: ReturnType<typeof getDatabase>, card: Card) {
-  database
-    .prepare(
-      `
-      INSERT INTO cards (id, title, contents_json)
-      VALUES (@id, @title, @contentsJson)
-      `,
-    )
-    .run({
-      contentsJson: JSON.stringify(card.contents),
-      id: card.id,
-      title: card.title,
-    });
-}
+export function listCardsByDeck(deckId: string): Card[] {
+  const db = getDatabase();
 
-export function listCards(): Card[] {
-  const rows = getDatabase()
+  requireDeck(db, deckId);
+
+  const rows = db
     .prepare(
       `
-      SELECT id, title, contents_json
+      SELECT id, title, contents_json, deck_id
       FROM cards
-      ORDER BY title COLLATE NOCASE ASC
+      WHERE deck_id = ?
+      ORDER BY position ASC
       `,
     )
-    .all() as CardRow[];
+    .all(deckId) as CardRow[];
 
   return rows.map(toCard);
 }
 
 export function getCard(cardId: string): Card {
   const row = getDatabase()
-    .prepare('SELECT id, title, contents_json FROM cards WHERE id = ?')
+    .prepare('SELECT id, title, contents_json, deck_id FROM cards WHERE id = ?')
     .get(cardId) as CardRow | undefined;
 
   if (!row) {
@@ -307,26 +212,17 @@ export function getCard(cardId: string): Card {
   return toCard(row);
 }
 
-export function createCard(input: CreateCardInput): Card {
-  const card = buildCard(input);
-
-  insertCard(getDatabase(), card);
-
-  return card;
-}
-
 export function createCardInDeck(deckId: string, input: CreateCardInput): Card {
-  const card = buildCard(input);
+  const card = buildCard(deckId, input);
   const db = getDatabase();
   const createStoredCard = db.transaction(() => {
     requireDeck(db, deckId);
-    insertCard(db, card);
 
     const nextPosition = db
       .prepare(
         `
         SELECT COALESCE(MAX(position), -1) + 1 AS position
-        FROM deck_cards
+        FROM cards
         WHERE deck_id = ?
         `,
       )
@@ -335,10 +231,16 @@ export function createCardInDeck(deckId: string, input: CreateCardInput): Card {
 
     db.prepare(
       `
-      INSERT INTO deck_cards (deck_id, card_id, position)
-      VALUES (?, ?, ?)
+      INSERT INTO cards (id, title, contents_json, deck_id, position)
+      VALUES (@id, @title, @contentsJson, @deckId, @position)
       `,
-    ).run(deckId, card.id, nextPosition);
+    ).run({
+      contentsJson: JSON.stringify(card.contents),
+      deckId: card.deckId,
+      id: card.id,
+      position: nextPosition,
+      title: card.title,
+    });
   });
 
   createStoredCard();
@@ -389,53 +291,52 @@ export function listDecks(): Deck[] {
   const rows = getDatabase()
     .prepare(
       `
-      SELECT id, name, subject_id
+      SELECT decks.id, decks.name, decks.subject_id, COUNT(cards.id) AS card_count
       FROM decks
-      ORDER BY name COLLATE NOCASE ASC
+      LEFT JOIN cards ON cards.deck_id = decks.id
+      GROUP BY decks.id, decks.name, decks.subject_id
+      ORDER BY decks.name COLLATE NOCASE ASC
       `,
     )
     .all() as DeckRow[];
-  const cardIdsByDeckId = getDeckCardIdMap(rows.map((row) => row.id));
 
-  return rows.map((row) => toDeck(row, cardIdsByDeckId.get(row.id) ?? []));
+  return rows.map(toDeck);
 }
 
 export function getDeck(deckId: string): Deck {
   const row = getDatabase()
-    .prepare('SELECT id, name, subject_id FROM decks WHERE id = ?')
+    .prepare(
+      `
+      SELECT decks.id, decks.name, decks.subject_id, COUNT(cards.id) AS card_count
+      FROM decks
+      LEFT JOIN cards ON cards.deck_id = decks.id
+      WHERE decks.id = ?
+      GROUP BY decks.id, decks.name, decks.subject_id
+      `,
+    )
     .get(deckId) as DeckRow | undefined;
 
   if (!row) {
     throw new Error('Deck does not exist');
   }
 
-  return toDeck(row, getDeckCardIds(deckId));
+  return toDeck(row);
 }
 
 export function createDeck(input: CreateDeckInput): Deck {
   const name = input.name.trim();
-  const cardIds = input.cardIds ?? [];
 
   if (!name) {
     throw new Error('Deck name is required');
   }
 
   requireSubject(input.subjectId);
-  requireCards(cardIds);
 
   const deckId = randomUUID();
-  const db = getDatabase();
-  const createStoredDeck = db.transaction(() => {
-    db.prepare(
-      `
-      INSERT INTO decks (id, name, subject_id)
-      VALUES (?, ?, ?)
-      `,
-    ).run(deckId, name, input.subjectId);
-    replaceDeckCardIds(deckId, cardIds);
-  });
 
-  createStoredDeck();
+  getDatabase()
+    .prepare('INSERT INTO decks (id, name, subject_id) VALUES (?, ?, ?)')
+    .run(deckId, name, input.subjectId);
 
   return getDeck(deckId);
 }
@@ -444,29 +345,23 @@ export function updateDeck(deckId: string, input: UpdateDeckInput): Deck {
   const existingDeck = getDeck(deckId);
   const nextName = input.name === undefined ? existingDeck.name : input.name.trim();
   const nextSubjectId = input.subjectId ?? existingDeck.subjectId;
-  const nextCardIds = input.cardIds ?? existingDeck.cardIds;
 
   if (!nextName) {
     throw new Error('Deck name is required');
   }
 
   requireSubject(nextSubjectId);
-  requireCards(nextCardIds);
 
-  const db = getDatabase();
-  const updateStoredDeck = db.transaction(() => {
-    db.prepare(
+  getDatabase()
+    .prepare(
       `
       UPDATE decks
       SET name = ?,
           subject_id = ?
       WHERE id = ?
       `,
-    ).run(nextName, nextSubjectId, deckId);
-    replaceDeckCardIds(deckId, nextCardIds);
-  });
-
-  updateStoredDeck();
+    )
+    .run(nextName, nextSubjectId, deckId);
 
   return getDeck(deckId);
 }

@@ -7,9 +7,8 @@ type ElectronApi = {
     saveImage: (input: SaveImageAttachmentInput) => Promise<SavedImageAttachment>;
   };
   cards: {
-    list: () => Promise<Card[]>;
+    listByDeck: (deckId: string) => Promise<Card[]>;
     get: (cardId: string) => Promise<Card>;
-    create: (input: CreateCardInput) => Promise<Card>;
     createInDeck: (deckId: string, input: CreateCardInput) => Promise<Card>;
     update: (cardId: string, input: UpdateCardInput) => Promise<Card>;
     delete: (cardId: string) => Promise<string>;

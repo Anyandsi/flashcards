@@ -11,9 +11,9 @@ contextBridge.exposeInMainWorld('api', {
       ipcRenderer.invoke('attachments:save-image', input) as Promise<SavedImageAttachment>,
   },
   cards: {
-    list: () => ipcRenderer.invoke('cards:list') as Promise<Card[]>,
+    listByDeck: (deckId: string) =>
+      ipcRenderer.invoke('cards:list-by-deck', deckId) as Promise<Card[]>,
     get: (cardId: string) => ipcRenderer.invoke('cards:get', cardId) as Promise<Card>,
-    create: (input: CreateCardInput) => ipcRenderer.invoke('cards:create', input) as Promise<Card>,
     createInDeck: (deckId: string, input: CreateCardInput) =>
       ipcRenderer.invoke('cards:create-in-deck', deckId, input) as Promise<Card>,
     update: (cardId: string, input: UpdateCardInput) =>

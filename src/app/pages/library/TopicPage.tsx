@@ -22,10 +22,10 @@ export function TopicPage() {
       }
 
       try {
-        const storedTopic = await window.api.decks.get(topicId);
-        const storedCards = await Promise.all(
-          storedTopic.cardIds.map((cardId) => window.api.cards.get(cardId)),
-        );
+        const [storedTopic, storedCards] = await Promise.all([
+          window.api.decks.get(topicId),
+          window.api.cards.listByDeck(topicId),
+        ]);
 
         if (!isMounted) {
           return;
@@ -63,7 +63,7 @@ export function TopicPage() {
       setCards((currentCards) => currentCards.filter((card) => card.id !== cardId));
       setTopic({
         ...topic,
-        cardIds: topic.cardIds.filter((topicCardId) => topicCardId !== cardId),
+        cardCount: Math.max(topic.cardCount - 1, 0),
       });
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : 'Failed to delete card');

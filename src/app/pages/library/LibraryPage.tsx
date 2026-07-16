@@ -265,7 +265,7 @@ export function LibraryPage() {
                       >
                         <h2 className="truncate text-base font-semibold">{deck.name}</h2>
                         <p className="mt-1 text-sm text-muted-foreground">
-                          {deck.cardIds.length} cards
+                          {deck.cardCount} cards
                         </p>
                       </Link>
                     </>

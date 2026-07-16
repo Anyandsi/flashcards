@@ -8,14 +8,13 @@ import type {
 } from '../../models/decks';
 import { trustedIpcHandler } from '../security/rendererSecurity';
 import {
-  createCard,
   createCardInDeck,
   createDeck,
   deleteCard,
   deleteDeck,
   getCard,
   getDeck,
-  listCards,
+  listCardsByDeck,
   listDecks,
   updateCard,
   updateDeck,
@@ -25,18 +24,6 @@ type UnknownRecord = Record<string, unknown>;
 
 function isRecord(value: unknown): value is UnknownRecord {
   return !!value && typeof value === 'object';
-}
-
-function parseOptionalCardIds(value: unknown): string[] | undefined {
-  if (value === undefined) {
-    return undefined;
-  }
-
-  if (!Array.isArray(value) || !value.every((cardId) => typeof cardId === 'string')) {
-    throw new Error('Deck card ids must be a list of strings');
-  }
-
-  return value as string[];
 }
 
 function parseOptionalContents(value: unknown): CardContents | undefined {
@@ -86,7 +73,6 @@ function parseCreateDeckInput(value: unknown): CreateDeckInput {
   const subjectId = value.subjectId;
 
   return {
-    cardIds: parseOptionalCardIds(value.cardIds),
     name,
     subjectId,
   };
@@ -109,7 +95,6 @@ function parseUpdateDeckInput(value: unknown): UpdateDeckInput {
   const subjectId = value.subjectId as string | undefined;
 
   return {
-    cardIds: parseOptionalCardIds(value.cardIds),
     name,
     subjectId,
   };
@@ -124,14 +109,15 @@ function parseId(value: unknown, label: string): string {
 }
 
 export function registerDeckHandlers() {
-  ipcMain.handle('cards:list', trustedIpcHandler(() => listCards()));
+  ipcMain.handle(
+    'cards:list-by-deck',
+    trustedIpcHandler((_event, deckId: unknown) =>
+      listCardsByDeck(parseId(deckId, 'Deck id')),
+    ),
+  );
   ipcMain.handle(
     'cards:get',
     trustedIpcHandler((_event, cardId: unknown) => getCard(parseId(cardId, 'Card id'))),
-  );
-  ipcMain.handle(
-    'cards:create',
-    trustedIpcHandler((_event, input: unknown) => createCard(parseCreateCardInput(input))),
   );
   ipcMain.handle(
     'cards:create-in-deck',
