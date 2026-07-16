@@ -29,8 +29,13 @@ export async function updateReviewStack(stack: Card[], rating: ReviewRating): Pr
     return stack;
   }
 
-  await window.api.cards.setReviewRating(currentCard.id, rating);
+  const updatedCard = await window.api.cards.setReviewRating(currentCard.id, rating);
   announceReviewProgressChange();
+
+  // if card is "bad", we want  it at the end of the stack
+  if (rating === ReviewRating.Bad) {
+    return [...stack.slice(1), updatedCard];
+  }
 
   return stack.slice(1);
 }
