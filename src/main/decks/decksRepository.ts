@@ -224,12 +224,49 @@ export function listCardsByDeck(deckId: string): Card[] {
       SELECT id, title, contents_json, deck_id, review_rating, last_review_date
       FROM cards
       WHERE deck_id = ?
-      ORDER BY position ASC
+      ORDER BY position ASC, rowid ASC
       `,
     )
     .all(deckId) as CardRow[];
 
   return rows.map(toCard);
+}
+
+export function reorderCardsInDeck(deckId: string, cardIds: string[]): Card[] {
+  const db = getDatabase();
+
+  requireDeck(db, deckId);
+
+  const storedCardIds = db
+    .prepare('SELECT id FROM cards WHERE deck_id = ?')
+    .all(deckId) as IdRow[];
+  const requestedCardIds = new Set(cardIds);
+
+  if (
+    requestedCardIds.size !== cardIds.length ||
+    storedCardIds.length !== cardIds.length ||
+    storedCardIds.some((card) => !requestedCardIds.has(card.id))
+  ) {
+    throw new Error('Card order must contain every card in the topic exactly once');
+  }
+
+  const saveCardOrder = db.transaction(() => {
+    const updatePosition = db.prepare(
+      'UPDATE cards SET position = ? WHERE id = ? AND deck_id = ?',
+    );
+
+    cardIds.forEach((cardId, position) => {
+      const result = updatePosition.run(position, cardId, deckId);
+
+      if (result.changes !== 1) {
+        throw new Error('Failed to save card order');
+      }
+    });
+  });
+
+  saveCardOrder();
+
+  return listCardsByDeck(deckId);
 }
 
 export function getCard(cardId: string): Card {
@@ -361,15 +398,33 @@ export function deleteCard(cardId: string): DeletionReceipt {
   db.prepare('DELETE FROM cards WHERE id = ?').run(cardId);
 
   return createDeletionReceipt('card', card.title, () => {
-    requireDeck(db, card.deck_id);
-    db.prepare(
-      `
-      INSERT INTO cards
-        (id, title, contents_json, deck_id, position, review_rating, last_review_date)
-      VALUES
-        (@id, @title, @contents_json, @deck_id, @position, @review_rating, @last_review_date)
-      `,
-    ).run(card);
+    const restoreCard = db.transaction(() => {
+      requireDeck(db, card.deck_id);
+      const positionIsOccupied = db
+        .prepare('SELECT 1 FROM cards WHERE deck_id = ? AND position = ?')
+        .get(card.deck_id, card.position);
+
+      if (positionIsOccupied) {
+        db.prepare(
+          `
+          UPDATE cards
+          SET position = position + 1
+          WHERE deck_id = ? AND position >= ?
+          `,
+        ).run(card.deck_id, card.position);
+      }
+
+      db.prepare(
+        `
+        INSERT INTO cards
+          (id, title, contents_json, deck_id, position, review_rating, last_review_date)
+        VALUES
+          (@id, @title, @contents_json, @deck_id, @position, @review_rating, @last_review_date)
+        `,
+      ).run(card);
+    });
+
+    restoreCard();
   });
 }
 

@@ -23,6 +23,8 @@ contextBridge.exposeInMainWorld('api', {
       ipcRenderer.invoke('cards:update', cardId, input) as Promise<Card>,
     setReviewRating: (cardId: string, rating: ReviewRating) =>
       ipcRenderer.invoke('cards:set-review-rating', cardId, rating) as Promise<Card>,
+    reorder: (deckId: string, cardIds: string[]) =>
+      ipcRenderer.invoke('cards:reorder', deckId, cardIds) as Promise<Card[]>,
     delete: (cardId: string) =>
       ipcRenderer.invoke('cards:delete', cardId) as Promise<DeletionReceipt>,
   },

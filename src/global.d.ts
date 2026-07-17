@@ -15,6 +15,7 @@ type ElectronApi = {
     createInDeck: (deckId: string, input: CreateCardInput) => Promise<Card>;
     update: (cardId: string, input: UpdateCardInput) => Promise<Card>;
     setReviewRating: (cardId: string, rating: ReviewRating) => Promise<Card>;
+    reorder: (deckId: string, cardIds: string[]) => Promise<Card[]>;
     delete: (cardId: string) => Promise<DeletionReceipt>;
   };
   decks: {

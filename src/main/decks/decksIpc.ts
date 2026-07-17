@@ -17,6 +17,7 @@ import {
   getDeck,
   listCardsByDeck,
   listDecks,
+  reorderCardsInDeck,
   setCardReviewRating,
   updateCard,
   updateDeck,
@@ -121,6 +122,14 @@ function parseReviewRating(value: unknown): ReviewRating {
   }
 }
 
+function parseCardIds(value: unknown): string[] {
+  if (!Array.isArray(value) || value.some((cardId) => typeof cardId !== 'string')) {
+    throw new Error('Card order is invalid');
+  }
+
+  return value as string[];
+}
+
 export function registerDeckHandlers() {
   ipcMain.handle(
     'cards:list-by-deck',
@@ -148,6 +157,12 @@ export function registerDeckHandlers() {
     'cards:set-review-rating',
     trustedIpcHandler((_event, cardId: unknown, rating: unknown) =>
       setCardReviewRating(parseId(cardId, 'Card id'), parseReviewRating(rating)),
+    ),
+  );
+  ipcMain.handle(
+    'cards:reorder',
+    trustedIpcHandler((_event, deckId: unknown, cardIds: unknown) =>
+      reorderCardsInDeck(parseId(deckId, 'Deck id'), parseCardIds(cardIds)),
     ),
   );
   ipcMain.handle(

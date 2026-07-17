@@ -1,6 +1,15 @@
-import { ArrowLeft, FileDown, LayoutGrid, NotebookText, Pencil, Plus, Trash2 } from 'lucide-react';
+import {
+  ArrowLeft,
+  FileDown,
+  GripVertical,
+  LayoutGrid,
+  NotebookText,
+  Pencil,
+  Plus,
+  Trash2,
+} from 'lucide-react';
 import { Link, useParams } from 'react-router-dom';
-import { useEffect, useMemo, useState } from 'react';
+import { type DragEvent, useEffect, useMemo, useState } from 'react';
 import type { Card, Deck } from '../../../models/decks';
 import { useDeletionFeedback } from '../../../components/feedback/DeletionFeedback';
 import { MarkdownPreview } from '../../../components/cards/MarkdownPreview';
@@ -8,6 +17,44 @@ import { announceReviewProgressChange } from '../../review/reviewEvents';
 import { routes } from '../../routes';
 
 type TopicViewMode = 'cards' | 'notes';
+type CardDropTarget = {
+  cardId: string;
+  placement: 'after' | 'before';
+};
+
+function moveCard(
+  cards: Card[],
+  draggedCardId: string,
+  targetCardId: string,
+  placement: CardDropTarget['placement'],
+) {
+  const draggedCard = cards.find((card) => card.id === draggedCardId);
+
+  if (!draggedCard || draggedCardId === targetCardId) {
+    return cards;
+  }
+
+  const cardsWithoutDraggedCard = cards.filter((card) => card.id !== draggedCardId);
+  const targetIndex = cardsWithoutDraggedCard.findIndex((card) => card.id === targetCardId);
+
+  if (targetIndex === -1) {
+    return cards;
+  }
+
+  const insertionIndex = placement === 'after' ? targetIndex + 1 : targetIndex;
+  const reorderedCards = [...cardsWithoutDraggedCard];
+
+  reorderedCards.splice(insertionIndex, 0, draggedCard);
+
+  return reorderedCards;
+}
+
+function cardOrderMatches(firstCards: Card[], secondCards: Card[]) {
+  return (
+    firstCards.length === secondCards.length &&
+    firstCards.every((card, index) => card.id === secondCards[index]?.id)
+  );
+}
 
 export function TopicPage() {
   const { confirmDeletion, showUndo } = useDeletionFeedback();
@@ -17,6 +64,9 @@ export function TopicPage() {
   const [viewMode, setViewMode] = useState<TopicViewMode>('cards');
   const [isLoading, setIsLoading] = useState(true);
   const [isExporting, setIsExporting] = useState(false);
+  const [isReordering, setIsReordering] = useState(false);
+  const [draggedCardId, setDraggedCardId] = useState<string | null>(null);
+  const [dropTarget, setDropTarget] = useState<CardDropTarget | null>(null);
   const [exportMessage, setExportMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const combinedMarkdown = useMemo(
@@ -113,6 +163,75 @@ export function TopicPage() {
       });
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : 'Failed to delete card');
+    }
+  }
+
+  function handleCardDragStart(event: DragEvent<HTMLElement>, cardId: string) {
+    if (isReordering) {
+      event.preventDefault();
+      return;
+    }
+
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('text/plain', cardId);
+    setDraggedCardId(cardId);
+    setDropTarget(null);
+  }
+
+  function handleCardDragOver(event: DragEvent<HTMLElement>, targetCardId: string) {
+    if (!draggedCardId || draggedCardId === targetCardId || isReordering) {
+      return;
+    }
+
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'move';
+
+    const bounds = event.currentTarget.getBoundingClientRect();
+    const placement = event.clientY < bounds.top + bounds.height / 2 ? 'before' : 'after';
+
+    setDropTarget((currentTarget) =>
+      currentTarget?.cardId === targetCardId && currentTarget.placement === placement
+        ? currentTarget
+        : { cardId: targetCardId, placement },
+    );
+  }
+
+  async function handleCardDrop(event: DragEvent<HTMLElement>, targetCardId: string) {
+    event.preventDefault();
+
+    if (!draggedCardId || draggedCardId === targetCardId || isReordering) {
+      setDraggedCardId(null);
+      setDropTarget(null);
+      return;
+    }
+
+    const bounds = event.currentTarget.getBoundingClientRect();
+    const placement = event.clientY < bounds.top + bounds.height / 2 ? 'before' : 'after';
+    const previousCards = cards;
+    const reorderedCards = moveCard(cards, draggedCardId, targetCardId, placement);
+
+    setDraggedCardId(null);
+    setDropTarget(null);
+
+    if (cardOrderMatches(previousCards, reorderedCards)) {
+      return;
+    }
+
+    setCards(reorderedCards);
+    setIsReordering(true);
+    setErrorMessage(null);
+
+    try {
+      const savedCards = await window.api.cards.reorder(
+        topicId,
+        reorderedCards.map((card) => card.id),
+      );
+      setCards(savedCards);
+    } catch (error) {
+      setCards(previousCards);
+      setErrorMessage(error instanceof Error ? error.message : 'Failed to save card order');
+    } finally {
+      setIsReordering(false);
     }
   }
 
@@ -222,7 +341,7 @@ export function TopicPage() {
 
         <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
           {viewMode === 'cards'
-            ? 'Add, edit, and delete cards in this topic.'
+            ? 'Add, edit, delete, or drag cards into the order you want.'
             : 'Read every card in this topic as one combined note.'}
         </p>
         {exportMessage ? <p className="mt-2 text-sm text-success">{exportMessage}</p> : null}
@@ -250,13 +369,46 @@ export function TopicPage() {
         <div className="grid gap-3">
           {cards.map((card) => (
             <article
-              className="rounded-md border border-border bg-card p-5 text-card-foreground"
+              className={`relative rounded-md border border-border bg-card p-5 text-card-foreground transition-opacity ${
+                draggedCardId === card.id ? 'opacity-50' : ''
+              }`}
               key={card.id}
+              onDragOver={(event) => {
+                handleCardDragOver(event, card.id);
+              }}
+              onDrop={(event) => {
+                handleCardDrop(event, card.id);
+              }}
             >
+              {dropTarget?.cardId === card.id ? (
+                <span
+                  aria-hidden="true"
+                  className={`pointer-events-none absolute left-2 right-2 h-0.5 rounded-full bg-primary ${
+                    dropTarget.placement === 'before' ? '-top-2' : '-bottom-2'
+                  }`}
+                />
+              ) : null}
               <div className="flex items-center justify-between gap-4">
-                <div className="min-w-0 flex-1">
+                <div className="flex min-w-0 flex-1 items-center gap-2">
+                  <button
+                    aria-label={`Drag ${card.title} to reorder`}
+                    className="flex h-8 w-8 shrink-0 cursor-grab items-center justify-center rounded-md text-muted-foreground transition hover:bg-secondary hover:text-secondary-foreground active:cursor-grabbing disabled:cursor-not-allowed disabled:opacity-40"
+                    disabled={isReordering}
+                    draggable={!isReordering}
+                    onDragEnd={() => {
+                      setDraggedCardId(null);
+                      setDropTarget(null);
+                    }}
+                    onDragStart={(event) => {
+                      handleCardDragStart(event, card.id);
+                    }}
+                    title="Drag to reorder"
+                    type="button"
+                  >
+                    <GripVertical size={17} aria-hidden="true" />
+                  </button>
                   <Link
-                    className="block rounded-md outline-none transition hover:text-primary focus:text-primary"
+                    className="min-w-0 flex-1 rounded-md outline-none transition hover:text-primary focus:text-primary"
                     to={routes.editCard(topicId, card.id)}
                   >
                     <h2 className="truncate text-base font-semibold">{card.title}</h2>
